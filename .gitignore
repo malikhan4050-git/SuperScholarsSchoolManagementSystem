@@ -1,0 +1,17 @@
+# Virtual Environment
+venv/
+__pycache__/
+*.pyc
+
+# Database
+*.db
+super_scholars.db
+
+# Generated Files
+challans/
+reports/
+*.pdf
+*.xlsx
+
+# VS Code
+.vscode/
