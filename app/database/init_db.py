@@ -72,7 +72,7 @@ def setup_database():
         else:
             print(f"   ✅ Principal already exists: username='{existing_principal.username}'")
         
-        # Create Family 1 (2 students)
+        # Create Family 1 (2 students) - AHMED FAMILY
         print("\n5. Creating Family 1 (Ahmed Family - 2 students)...")
         existing_guardian1 = db.query(Guardian).filter(Guardian.cnic == "12345-1234567-1").first()
         if not existing_guardian1:
@@ -95,8 +95,8 @@ def setup_database():
             db.add(guardian1)
             db.flush()
             
-            # Student 1 - Class 5
-            student1_id = id_generator.generate_student_id(db, "Class 5")  # Pass class grade
+            # Student 1 - Class 5 (Fee: Rs. 2,000)
+            student1_id = id_generator.generate_student_id(db, "Class 5")
             student1 = Student(
                 student_id=student1_id,
                 first_name="Ali",
@@ -109,16 +109,16 @@ def setup_database():
                 class_grade="Class 5",
                 section="A",
                 academic_status=StudentStatus.ACTIVE,
-                monthly_tuition_fee=1000.0,
+                monthly_tuition_fee=2000.0,  # Class 5 fee
                 fee_concession=500.0,
                 fee_status=FeeStatus.PENDING,
-                total_outstanding_amount=1000.0
+                total_outstanding_amount=2000.0
             )
             db.add(student1)
             db.commit()
             
-            # Student 2 - Class 3
-            student2_id = id_generator.generate_student_id(db, "Class 3")  # Pass class grade
+            # Student 2 - Class 3 (Fee: Rs. 1,500)
+            student2_id = id_generator.generate_student_id(db, "Class 3")
             student2 = Student(
                 student_id=student2_id,
                 first_name="Sara",
@@ -131,21 +131,21 @@ def setup_database():
                 class_grade="Class 3",
                 section="B",
                 academic_status=StudentStatus.ACTIVE,
-                monthly_tuition_fee=1000.0,
+                monthly_tuition_fee=1500.0,  # Class 3 fee
                 fee_concession=500.0,
                 fee_status=FeeStatus.PENDING,
-                total_outstanding_amount=1000.0
+                total_outstanding_amount=1500.0
             )
             db.add(student2)
             db.commit()
             
             print(f"   ✅ Ahmed Family created (Family ID: {family1_id})")
-            print(f"   ✅ Ali Ahmed (ID: {student1_id}) - Class 5 - Rs. 1,000/month - Concession: Rs. 500")
-            print(f"   ✅ Sara Ahmed (ID: {student2_id}) - Class 3 - Rs. 1,000/month - Concession: Rs. 500")
+            print(f"   ✅ Ali Ahmed (ID: {student1_id}) - Class 5 - Rs. 2,000/month - Concession: Rs. 500")
+            print(f"   ✅ Sara Ahmed (ID: {student2_id}) - Class 3 - Rs. 1,500/month - Concession: Rs. 500")
         else:
             print(f"   ✅ Ahmed Family already exists")
         
-        # Create Family 2 (2 students)
+        # Create Family 2 (2 students) - KHAN FAMILY
         print("\n6. Creating Family 2 (Khan Family - 2 students)...")
         existing_guardian2 = db.query(Guardian).filter(Guardian.cnic == "12345-9876543-1").first()
         if not existing_guardian2:
@@ -168,8 +168,8 @@ def setup_database():
             db.add(guardian2)
             db.flush()
             
-            # Student 3 - Class 7
-            student3_id = id_generator.generate_student_id(db, "Class 7")  # Pass class grade
+            # Student 3 - Class 7 (Fee: Rs. 2,400)
+            student3_id = id_generator.generate_student_id(db, "Class 7")
             student3 = Student(
                 student_id=student3_id,
                 first_name="Hamza",
@@ -182,16 +182,16 @@ def setup_database():
                 class_grade="Class 7",
                 section="A",
                 academic_status=StudentStatus.ACTIVE,
-                monthly_tuition_fee=1000.0,
+                monthly_tuition_fee=2400.0,  # Class 7 fee
                 fee_concession=500.0,
                 fee_status=FeeStatus.PENDING,
-                total_outstanding_amount=1000.0
+                total_outstanding_amount=2400.0
             )
             db.add(student3)
             db.commit()
             
-            # Student 4 - Class 6
-            student4_id = id_generator.generate_student_id(db, "Class 6")  # Pass class grade
+            # Student 4 - Class 6 (Fee: Rs. 2,200)
+            student4_id = id_generator.generate_student_id(db, "Class 6")
             student4 = Student(
                 student_id=student4_id,
                 first_name="Zainab",
@@ -204,17 +204,17 @@ def setup_database():
                 class_grade="Class 6",
                 section="B",
                 academic_status=StudentStatus.ACTIVE,
-                monthly_tuition_fee=1000.0,
+                monthly_tuition_fee=2200.0,  # Class 6 fee
                 fee_concession=500.0,
                 fee_status=FeeStatus.PENDING,
-                total_outstanding_amount=1000.0
+                total_outstanding_amount=2200.0
             )
             db.add(student4)
             db.commit()
             
             print(f"   ✅ Khan Family created (Family ID: {family2_id})")
-            print(f"   ✅ Hamza Khan (ID: {student3_id}) - Class 7 - Rs. 1,000/month - Concession: Rs. 500")
-            print(f"   ✅ Zainab Khan (ID: {student4_id}) - Class 6 - Rs. 1,000/month - Concession: Rs. 500")
+            print(f"   ✅ Hamza Khan (ID: {student3_id}) - Class 7 - Rs. 2,400/month - Concession: Rs. 500")
+            print(f"   ✅ Zainab Khan (ID: {student4_id}) - Class 6 - Rs. 2,200/month - Concession: Rs. 500")
         else:
             print(f"   ✅ Khan Family already exists")
         
@@ -229,12 +229,14 @@ def setup_database():
         
         print("\n📋 Sample Students:")
         print("   Family 1 (Ahmed):")
-        print("   Ali Ahmed - Class 5 - Rs. 1,000/month - Concession: Rs. 500 (Net: Rs. 500)")
-        print("   Sara Ahmed - Class 3 - Rs. 1,000/month - Concession: Rs. 500 (Net: Rs. 500)")
+        print(f"   Family ID: {guardian1.family_id}")
+        print("   Ali Ahmed - Class 5 - Rs. 2,000/month - Concession: Rs. 500 (Net: Rs. 1,500)")
+        print("   Sara Ahmed - Class 3 - Rs. 1,500/month - Concession: Rs. 500 (Net: Rs. 1,000)")
         print("   Family 2 (Khan):")
-        print("   Hamza Khan - Class 7 - Rs. 1,000/month - Concession: Rs. 500 (Net: Rs. 500)")
-        print("   Zainab Khan - Class 6 - Rs. 1,000/month - Concession: Rs. 500 (Net: Rs. 500)")
-        print("   Total per family: Rs. 1,000 (2 students x Rs. 500)")
+        print(f"   Family ID: {guardian2.family_id}")
+        print("   Hamza Khan - Class 7 - Rs. 2,400/month - Concession: Rs. 500 (Net: Rs. 1,900)")
+        print("   Zainab Khan - Class 6 - Rs. 2,200/month - Concession: Rs. 500 (Net: Rs. 1,700)")
+        print("   Total per family: Rs. 2,500 (Ahmed) / Rs. 3,600 (Khan)")
         
     except Exception as e:
         print(f"\n❌ Error during setup: {str(e)}")

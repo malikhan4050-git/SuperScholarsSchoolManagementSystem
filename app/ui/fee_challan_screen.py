@@ -839,13 +839,55 @@ class FeeChallanlScreen(ctk.CTkFrame):
         )
         generate_btn.pack(side="left", padx=10)
     
-    def reset_form(self):
-        """Reset the form to default state"""
-        # Reset month to default (January)
-        self.current_month = "January"
-        self.header_month_var.set("January")
+    def generate_challans(self):
+        if not self.selected_families:
+            messagebox.showwarning("No Selection", "Please select at least one family!")
+            return
         
-        # Reset year to current year
-        self.current_year = str(datetime.now().year)
-        self.header_year_var.set(self.current_year)
+        # Get the selected due date
+        try:
+            due_date_str = self.date_entry.get().strip()
+            if due_date_str:
+                self.due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+            else:
+                self.due_date = date.today()
+        except ValueError:
+            messagebox.showerror("Error", "Invalid date format! Please use YYYY-MM-DD")
+            return
         
+        try:
+            challans_data = []
+            
+            for row_data in self.selected_families:
+                family_challan_data = {
+                    'family_id': row_data['family_id'],
+                    'guardian_name': row_data.get('guardian_name', ''),
+                    'guardian_cnic': row_data.get('guardian_cnic', ''),
+                    'challan_month': self.current_month,
+                    'challan_year': self.current_year,
+                    'due_date': self.due_date.strftime("%Y-%m-%d"),
+                    'students': row_data['students'],
+                    'total_monthly_tuition_fee': row_data['monthly_fee'],
+                    'total_concession': row_data['fee_concession'],
+                    'total_arrears': row_data['arrears'],
+                    'admission_fee': row_data['admission_fee'],
+                    'registration_fee': row_data['registration_fee'],
+                    'exam_fee': row_data['exam_fee'],
+                    'transport_fee': row_data['transport_fee'],
+                    'other_fee': row_data['other_fee'],
+                    'exact_payable': row_data['total_for_month']
+                }
+                challans_data.append(family_challan_data)
+            
+            if not challans_data:
+                messagebox.showwarning("No Data", "No families found for selected rows!")
+                return
+            
+            # Just open the preview window - NO reset logic
+            preview_window = ChallanPreviewWindow(self, challans_data, self.db, self.fee_service)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to generate challans: {str(e)}")
+    
+    def print_challans(self, count: int):
+        pass

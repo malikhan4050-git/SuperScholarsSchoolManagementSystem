@@ -6,18 +6,18 @@ import customtkinter as ctk
 from tkinter import messagebox
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app.database.models import SessionLocal
+from app.database.models import SessionLocal, Student, Guardian
 from app.services.student_service import StudentService
 
 class StudentRegistrationForm(ctk.CTkToplevel):
-    """Professional Student Registration Form"""
+    """Professional Student Registration Form - Supports Add & Edit Modes"""
     
-    def __init__(self, parent, student_service=None):
+    def __init__(self, parent, student_service=None, student=None):
         super().__init__(parent)
         
         # Configure window
@@ -31,6 +31,10 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         # Store services
         self.student_service = student_service or StudentService(SessionLocal())
         
+        # Store the student being edited (None for add mode)
+        self.editing_student = student
+        self.is_edit_mode = student is not None
+        
         # Store form entries
         self.form_entries = {}
         
@@ -39,6 +43,10 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         
         # Create UI
         self.create_widgets()
+        
+        # If editing, pre-fill the form
+        if self.is_edit_mode:
+            self.pre_fill_form()
         
         # Make modal
         self.transient(parent)
@@ -95,10 +103,11 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         )
         header_frame.pack(fill="x", padx=20, pady=(20, 10))
         
-        # Title
+        # Title - Change based on mode
+        title_text = "Edit Student" if self.is_edit_mode else "Student Registration Form"
         title_label = ctk.CTkLabel(
             header_frame,
-            text="Student Registration Form",
+            text=title_text,
             font=("Arial", 24, "bold"),
             text_color="white"
         )
@@ -268,7 +277,7 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         # Row 1 - Monthly Fee
         self.create_input_row(grid_frame, "Monthly Fee", "monthly_fee", 0, 0, required=True)
         
-        # Row 2 - Fee Concession (NEW)
+        # Row 2 - Fee Concession
         self.create_input_row(grid_frame, "Fee Concession", "fee_concession", 1, 0)
     
     def create_footer(self):
@@ -307,10 +316,11 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         )
         clear_btn.pack(side="right", padx=10, pady=10)
         
-        # Submit Button
+        # Submit Button - Change text based on mode
+        submit_text = "Update Student" if self.is_edit_mode else "Register Student"
         submit_btn = ctk.CTkButton(
             footer_frame,
-            text="Register Student",
+            text=submit_text,
             width=200,
             height=45,
             font=("Arial", 15, "bold"),
@@ -320,6 +330,48 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         )
         submit_btn.pack(side="right", padx=10, pady=10)
     
+    def pre_fill_form(self):
+        """Pre-fill the form fields when editing a student"""
+        if not self.editing_student:
+            return
+        
+        # Get the student data
+        student = self.editing_student
+        
+        # Get guardian data
+        guardian = None
+        if student.guardian_id:
+            guardian = self.student_service.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
+        
+        # Pre-fill personal information
+        self.form_entries['first_name'].insert(0, student.first_name)
+        self.form_entries['last_name'].insert(0, student.last_name)
+        self.form_entries['dob'].insert(0, student.date_of_birth.strftime("%Y-%m-%d"))
+        self.form_entries['gender'].insert(0, student.gender.value)
+        self.form_entries['cnic'].insert(0, student.cnic_bform or "")
+        
+        # Pre-fill guardian information
+        if guardian:
+            self.form_entries['guardian_name'].insert(0, guardian.guardian_name)
+            self.form_entries['guardian_cnic'].insert(0, guardian.cnic or "")
+            self.form_entries['mobile'].insert(0, guardian.mobile_number)
+            self.form_entries['email'].insert(0, guardian.email or "")
+            self.form_entries['current_address'].insert(0, guardian.address or "")
+            self.form_entries['permanent_address'].insert(0, guardian.permanent_address or "")
+            self.form_entries['guardian_occupation'].insert(0, guardian.occupation or "")
+            self.form_entries['guardian_income'].insert(0, str(guardian.monthly_income or 0))
+            self.form_entries['emergency_name'].insert(0, guardian.emergency_contact_name or "")
+            self.form_entries['emergency_phone'].insert(0, guardian.emergency_contact_number or "")
+        
+        # Pre-fill academic information
+        self.form_entries['admission_date'].insert(0, student.admission_date.strftime("%Y-%m-%d"))
+        self.form_entries['class_grade'].insert(0, student.class_grade)
+        self.form_entries['section'].insert(0, student.section or "")
+        
+        # Pre-fill fee information
+        self.form_entries['monthly_fee'].insert(0, str(student.monthly_tuition_fee))
+        self.form_entries['fee_concession'].insert(0, str(student.fee_concession or 0))
+    
     def clear_form(self):
         """Clear all form fields"""
         if messagebox.askyesno("Confirm", "Are you sure you want to clear all fields?"):
@@ -327,7 +379,7 @@ class StudentRegistrationForm(ctk.CTkToplevel):
                 entry.delete(0, "end")
     
     def submit_form(self):
-        """Submit the form"""
+        """Submit the form - Create or Update student"""
         
         # Validate required fields
         required_fields = ['first_name', 'last_name', 'dob', 'gender', 'guardian_name', 
@@ -344,17 +396,25 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         for field, entry in self.form_entries.items():
             student_data[field] = entry.get().strip()
         
-        # Create student
-        result = self.student_service.create_student(student_data)
-        
-        if result["success"]:
-            messagebox.showinfo("Success", 
-                f"Student created successfully!\n\n"
-                f"Student ID: {result['student_id']}\n"
-                f"Family ID: {result['family_id']}")
-            self.destroy()
+        if self.is_edit_mode:
+            # Update existing student
+            result = self.student_service.update_student(self.editing_student.id, student_data)
+            if result["success"]:
+                messagebox.showinfo("Success", "Student updated successfully!")
+                self.destroy()
+            else:
+                messagebox.showerror("Error", result["message"])
         else:
-            messagebox.showerror("Error", result["message"])
+            # Create new student
+            result = self.student_service.create_student(student_data)
+            if result["success"]:
+                messagebox.showinfo("Success", 
+                    f"Student created successfully!\n\n"
+                    f"Student ID: {result['student_id']}\n"
+                    f"Family ID: {result['family_id']}")
+                self.destroy()
+            else:
+                messagebox.showerror("Error", result["message"])
     
     def on_close(self):
         """Handle window close"""

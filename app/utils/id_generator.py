@@ -15,34 +15,24 @@ class IDGenerator:
     def generate_student_id(db: Session, class_grade: str = None) -> str:
         """
         Generate a unique student ID
-        Format: SS{class}-XXX
-        Example: SS10-001 (Student in class 10)
-                 SS5-001 (Student in class 5)
-                 SS7-001 (Student in class 7)
+        Format: SS-XXX
+        Example: SS-001 (First student)
+                 SS-002 (Second student)
+                 SS-003 (Third student)
         
         Args:
             db: Database session
             class_grade: The class/grade of the student (e.g., "10", "5", "7")
-                         If not provided, defaults to generic "SS-XXX"
+                         Not used for ID generation anymore, but kept for compatibility
         """
-        # Clean the class_grade - extract only numbers
-        if class_grade:
-            # Extract numbers from class_grade (e.g., "Class 10" -> "10")
-            import re
-            class_num = ''.join(re.findall(r'\d+', class_grade))
-            if not class_num:
-                class_num = "0"  # Default if no numbers found
-        else:
-            class_num = "0"  # Default if no class provided
-        
-        # Get all students to find the highest sequence number for this class
+        # Get all students to find the highest sequence number
         all_students = db.query(Student).all()
         
-        # Find max sequence number for this class
+        # Find max sequence number
         max_seq = 0
         for student in all_students:
-            # Check if student ID matches format SS{class}-XXX
-            if f"SS{class_num}-" in student.student_id:
+            # Check if student ID matches format SS-XXX
+            if student.student_id.startswith("SS-"):
                 try:
                     seq = int(student.student_id.split('-')[-1])
                     if seq > max_seq:
@@ -52,7 +42,7 @@ class IDGenerator:
         
         # Generate the new student ID
         next_seq = max_seq + 1
-        new_id = f"SS{class_num}-{next_seq:03d}"
+        new_id = f"SS-{next_seq:03d}"
         
         return new_id
     
@@ -60,27 +50,33 @@ class IDGenerator:
     def generate_family_id(db: Session) -> str:
         """
         Generate a unique family ID
-        Format: FMYY00001
-        Example: FM2600001 (First family in 2026)
-                 FM2600002 (Second family in 2026)
-                 FM2600003 (Third family in 2026)
+        Format: FMYY-X
+        Example: FM26-1 (First family in 2026)
+                 FM26-2 (Second family in 2026)
+                 FM26-3 (Third family in 2026)
+                 FM25-1 (First family in 2025)
         """
         year = datetime.now().year
         yy = str(year)[-2:]  # Get last 2 digits of year (e.g., "26" for 2026)
         
-        # Get the last family ID to determine the sequence
-        last_guardian = db.query(Guardian).order_by(Guardian.id.desc()).first()
+        # Get all guardians to find the highest sequence number for this year
+        all_guardians = db.query(Guardian).all()
         
-        if last_guardian:
-            # Extract the numeric part from the last family ID
-            # Format: FMYY00001 -> Extract "00001"
-            last_id_num = int(last_guardian.family_id[-5:])
-            next_id_num = last_id_num + 1
-        else:
-            next_id_num = 1
+        # Find max sequence number for this year
+        max_seq = 0
+        for guardian in all_guardians:
+            # Check if family ID matches format FMYY-X
+            if guardian.family_id.startswith(f"FM{yy}-"):
+                try:
+                    seq = int(guardian.family_id.split('-')[-1])
+                    if seq > max_seq:
+                        max_seq = seq
+                except:
+                    continue
         
         # Generate the new family ID
-        new_id = f"FM{yy}{next_id_num:05d}"
+        next_seq = max_seq + 1
+        new_id = f"FM{yy}-{next_seq}"
         
         return new_id
     
@@ -100,12 +96,12 @@ class IDGenerator:
     def generate_bill_id(family_id: str, challan_month: str = "January", year: int = None) -> str:
         """
         Generate a unique bill ID linked to the FAMILY and selected month
-        Format: FMYY00001-MMM
-        Example: FM2600001-JAN (for January)
-                 FM2600002-FEB (for February)
+        Format: FMYY-X-MMM
+        Example: FM26-1-JAN (for January)
+                 FM26-2-FEB (for February)
         
         Args:
-            family_id: The family's registration ID (e.g., FM2600001)
+            family_id: The family's registration ID (e.g., FM26-1)
             challan_month: The month name for which the challan is being generated (e.g., "January")
             year: The year for the bill (defaults to current year)
         """

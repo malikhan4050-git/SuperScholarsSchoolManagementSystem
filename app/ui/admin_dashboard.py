@@ -17,6 +17,7 @@ from app.services.student_service import StudentService
 from app.services.fee_service import FeeService
 from app.ui.student_form import StudentRegistrationForm
 from app.ui.fee_challan_screen import FeeChallanlScreen
+from app.ui.promotion_screen import PromotionScreen  # Add this import
 
 class AdminDashboard(ctk.CTk):
     """Admin Dashboard Class"""
@@ -107,6 +108,7 @@ class AdminDashboard(ctk.CTk):
         nav_items = [
             ("Dashboard", self.show_dashboard),
             ("Students", self.show_students),
+            ("Promote Students", self.show_promotion),  # Add this
             ("Fee Management", self.show_fees),
             ("Record Payment", self.show_payments),
             ("Reports", self.show_reports),
@@ -301,11 +303,58 @@ class AdminDashboard(ctk.CTk):
         # Refresh students list
         self.refresh_students_list()
     
+    def show_promotion(self):
+        """Show student promotion screen"""
+        self.clear_main_content()
+        
+        try:
+            # Create and display the promotion screen
+            self.promotion_screen = PromotionScreen(self.main_content, self.db, self.student_service)
+            self.promotion_screen.pack(fill="both", expand=True)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load Promotion screen: {str(e)}")
+            
+            # Fallback placeholder
+            self.header_frame = ctk.CTkFrame(
+                self.main_content,
+                height=100,
+                fg_color="white",
+                corner_radius=0
+            )
+            self.header_frame.pack(fill="x")
+            
+            self.header_title = ctk.CTkLabel(
+                self.header_frame,
+                text="Student Promotion",
+                font=("Arial", 24, "bold"),
+                text_color="#1e3a5f"
+            )
+            self.header_title.pack(side="left", padx=30, pady=30)
+            
+            placeholder = ctk.CTkLabel(
+                self.main_content,
+                text="Promotion features coming soon...",
+                font=("Arial", 18),
+                text_color="gray"
+            )
+            placeholder.pack(pady=100)
+    
     def show_add_student_form(self):
         """Show the new professional student registration form"""
         form = StudentRegistrationForm(self, self.student_service)
         self.wait_window(form)
         self.refresh_students_list()
+    
+    def edit_student(self, student_id):
+        """Edit student details - Opens the edit form with pre-filled data"""
+        student = self.student_service.get_student_by_id(student_id)
+        if student:
+            # Open the registration form in edit mode
+            form = StudentRegistrationForm(self, self.student_service, student=student)
+            self.wait_window(form)
+            self.refresh_students_list()
+        else:
+            messagebox.showerror("Error", "Student not found!")
     
     def refresh_students_list(self, students=None):
         """Refresh the students list"""
@@ -426,10 +475,6 @@ class AdminDashboard(ctk.CTk):
                 f"Class: {student.class_grade}\n"
                 f"Monthly Fee: Rs. {student.monthly_tuition_fee:,.0f}\n"
                 f"Concession: Rs. {student.fee_concession:,.0f}")
-    
-    def edit_student(self, student_id):
-        """Edit student details (placeholder)"""
-        messagebox.showinfo("Edit Student", "Edit functionality coming soon!")
     
     def delete_student(self, student_id):
         """Delete a student"""
