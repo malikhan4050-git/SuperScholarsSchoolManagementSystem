@@ -190,24 +190,26 @@ class ChallanPrinter:
         total_arrears = challan.total_arrears if hasattr(challan, 'total_arrears') else 0
         total_concession = challan.total_fee_concession if hasattr(challan, 'total_fee_concession') else 0
         admission_fee = challan.total_admission_fee if hasattr(challan, 'total_admission_fee') else 0
+        registration_fee = challan.total_registration_fee if hasattr(challan, 'total_registration_fee') else 0
         exam_fee = challan.total_exam_fee if hasattr(challan, 'total_exam_fee') else 0
-        registration_fee = challan.total_registration_fee if hasattr(challan, 'total_registration_fee') else 0  # NEW
-        transport_fee = challan.total_transport_fee if hasattr(challan, 'total_transport_fee') else 0  # NEW
+        transport_fee = challan.total_transport_fee if hasattr(challan, 'total_transport_fee') else 0
         other_fee = challan.total_other_fee if hasattr(challan, 'total_other_fee') else 0
+        
+        # Get the challan year
+        challan_year = challan.challan_year if hasattr(challan, 'challan_year') else str(datetime.now().year)
+        
+        # Get the due date from the challan record
+        due_date = challan.due_date if hasattr(challan, 'due_date') and challan.due_date else date.today()
+        due_date_str = due_date.strftime("%Y-%m-%d")  # Format as YYYY-MM-DD
         
         # Calculate total (BEFORE concession)
         total_before_concession = total_monthly + total_arrears + admission_fee + registration_fee + exam_fee + transport_fee + other_fee
         
-        # Calculate total (AFTER concession)
-        total = total_before_concession - total_concession
+        # Calculate total (AFTER concession) - This is the PAYABLE BEFORE
+        total_after_concession = total_before_concession - total_concession
         
-        # Calculate amount_due (same as total after concession)
-        amount_due = total
-        
-        # Get dates for Before/After Due
-        today = date.today()
-        before_date = today.strftime("%Y-%m-%d")  # Today's date
-        after_date = (today + timedelta(days=10)).strftime("%Y-%m-%d")  # Today + 10 days
+        # PAYABLE AFTER = PAYABLE BEFORE + Late Fee (Rs. 100)
+        payable_after = total_after_concession + 100
         
         # Set font sizes
         header_font_size = 7
@@ -247,45 +249,40 @@ class ChallanPrinter:
         c.setFillColor(colors.HexColor('#333333'))
         c.drawCentredString(x + w/2, y + h - 84, "Deposit at School Office")
         
-        # ===== FAMILY INFO (Centered) =====
-        info_y = y + h - 112
+        # ===== STUDENT INFORMATION (Centered, New Layout) =====
+        info_y = y + h - 110
         
-        # Guardian Name (BOLD, Centered)
+        # List ALL students in the family with their classes
+        if students:
+            c.setFont("Helvetica-Bold", info_font_size)
+            c.setFillColor(colors.HexColor('#333333'))
+            
+            # Show each student's name and class on SAME line for compactness
+            for student in students:
+                student_info = f"{student.first_name} {student.last_name} - Class {student.class_grade}"
+                c.drawCentredString(x + w/2, info_y, f"Student: {student_info}")
+                info_y -= 12  # Reduced spacing to fit more students
+        else:
+            c.setFont("Helvetica-Bold", info_font_size)
+            c.setFillColor(colors.HexColor('#333333'))
+            c.drawCentredString(x + w/2, info_y, "Student: N/A")
+            info_y -= 12
+        
+        # Father Name
         c.setFont("Helvetica-Bold", info_font_size)
-        c.setFillColor(colors.HexColor('#333333'))
-        c.drawCentredString(x + w/2, info_y, f"Guardian: {guardian.guardian_name if guardian else 'N/A'}")
+        c.drawCentredString(x + w/2, info_y, f"Father Name: {guardian.guardian_name if guardian else 'N/A'}")
+        info_y -= 12
         
-        info_y -= 14
-        # Family ID (BOLD, Centered)
-        c.setFont("Helvetica-Bold", info_font_size)
-        c.drawCentredString(x + w/2, info_y, f"Family ID: {challan.family_id}")
-        
-        info_y -= 14
-        # Month (Centered)
+        # Fee Month and Year
         c.setFont("Helvetica", info_font_size)
-        c.drawCentredString(x + w/2, info_y, f"Month: {challan.challan_month}")
+        c.drawCentredString(x + w/2, info_y, f"Fee Month: {challan.challan_month} {challan_year}")
+        info_y -= 12
         
-        info_y -= 14
+        # Bill ID
         c.drawCentredString(x + w/2, info_y, f"Bill ID: {challan.bill_id}")
         
-        # ===== STUDENTS LIST (Centered) =====
-        students_y = y + h - 185
-        
-        # Draw students section header
-        c.setFont("Helvetica-Bold", table_font_size)
-        c.setFillColor(colors.HexColor('#333333'))
-        c.drawCentredString(x + w/2, students_y, "STUDENTS")
-        
-        students_y -= 12
-        
-        # Draw each student
-        for student in students:
-            c.setFont("Helvetica", table_font_size)
-            c.drawCentredString(x + w/2, students_y, f"{student.first_name} {student.last_name} (ID: {student.student_id}, Class: {student.class_grade})")
-            students_y -= 10
-        
         # ===== FEE BREAKDOWN TABLE (Centered headers and data) =====
-        table_top = students_y - 10
+        table_top = info_y - 20
         
         # Table headers
         col1_left = x + 2
@@ -336,54 +333,62 @@ class ChallanPrinter:
             
             row_y -= row_height
         
-        # ===== CONCESSION ROW =====
+        # ===== ADD GAP/SPACE BETWEEN FEE TABLE AND TOTAL TABLE =====
+        row_y -= 15  # Add 15 units of empty space (NO separator line)
+        
+        # ===== TABLE 1: TOTAL + CONCESSION =====
+        # TOTAL ROW (BEFORE CONCESSION)
         c.setStrokeColor(colors.grey)
         c.setLineWidth(0.3)
         c.rect(col1_left, row_y, col2_left - col1_left, row_height)
         c.rect(col2_left, row_y, col2_right - col2_left, row_height)
         
         c.setFillColor(colors.black)
+        c.setFont("Helvetica-Bold", table_font_size)
+        c.drawCentredString(col1_left + (col2_left - col1_left)/2, row_y + 2, "Total")
+        c.drawCentredString(col2_left + (col2_right - col2_left)/2, row_y + 2, f"{total_before_concession:.0f}")
+        
+        row_y -= row_height
+        
+        # CONCESSION ROW
+        c.setStrokeColor(colors.grey)
+        c.setLineWidth(0.3)
+        c.rect(col1_left, row_y, col2_left - col1_left, row_height)
+        c.rect(col2_left, row_y, col2_right - col2_left, row_height)
+        
         c.setFont("Helvetica", table_font_size)
         c.drawCentredString(col1_left + (col2_left - col1_left)/2, row_y + 2, "Concession")
         c.drawCentredString(col2_left + (col2_right - col2_left)/2, row_y + 2, f"-{total_concession:.0f}")
         
         row_y -= row_height
         
-        # ===== TOTALS (2x2 GRID, Centered) =====
-        col_mid_1 = x + 2
-        col_mid_2 = x + w/2 + 2
-        col_mid_right = x + w - 2
+        # ===== ADD GAP BETWEEN TABLE 1 AND TABLE 2 =====
+        row_y -= 15  # Add 15 units of empty space
         
-        totals_y = row_y - 20
-        
-        # Row 1: Total (AFTER concession deduction)
-        c.rect(col_mid_1, totals_y, col_mid_2 - col_mid_1, 8)
-        c.rect(col_mid_2, totals_y, col_mid_right - col_mid_2, 8)
-        
-        c.setFont("Helvetica-Bold", table_font_size)
-        c.setFillColor(colors.black)
-        c.drawCentredString(col_mid_1 + (col_mid_2 - col_mid_1)/2, totals_y + 2, "Total:")
-        c.drawCentredString(col_mid_2 + (col_mid_right - col_mid_2)/2, totals_y + 2, f"{total:.0f}")
-        
-        # Row 2: Before Due (WITH DATE)
-        totals_y -= 8
-        c.rect(col_mid_1, totals_y, col_mid_2 - col_mid_1, 8)
-        c.rect(col_mid_2, totals_y, col_mid_right - col_mid_2, 8)
+        # ===== TABLE 2: PAYABLE BEFORE + PAYABLE AFTER =====
+        # PAYABLE BEFORE (Total after concession) - Using DUE DATE
+        c.setStrokeColor(colors.grey)
+        c.setLineWidth(0.3)
+        c.rect(col1_left, row_y, col2_left - col1_left, row_height)
+        c.rect(col2_left, row_y, col2_right - col2_left, row_height)
         
         c.setFont("Helvetica-Bold", table_font_size)
-        c.drawCentredString(col_mid_1 + (col_mid_2 - col_mid_1)/2, totals_y + 2, f"Before {before_date}:")
-        c.drawCentredString(col_mid_2 + (col_mid_right - col_mid_2)/2, totals_y + 2, f"{amount_due:.0f}")
+        c.drawCentredString(col1_left + (col2_left - col1_left)/2, row_y + 2, f"Payable Before {due_date_str}:")
+        c.drawCentredString(col2_left + (col2_right - col2_left)/2, row_y + 2, f"{total_after_concession:.0f}")
         
-        # Row 3: After Due (WITH DATE) - Before Due + late fee (Rs. 100)
-        totals_y -= 8
-        c.rect(col_mid_1, totals_y, col_mid_2 - col_mid_1, 8)
-        c.rect(col_mid_2, totals_y, col_mid_right - col_mid_2, 8)
+        row_y -= row_height
         
-        c.drawCentredString(col_mid_1 + (col_mid_2 - col_mid_1)/2, totals_y + 2, f"After {after_date}:")
-        c.drawCentredString(col_mid_2 + (col_mid_right - col_mid_2)/2, totals_y + 2, f"{amount_due + 100:.0f}")
+        # PAYABLE AFTER (Total after concession + late fee) - Using DUE DATE
+        c.setStrokeColor(colors.grey)
+        c.setLineWidth(0.3)
+        c.rect(col1_left, row_y, col2_left - col1_left, row_height)
+        c.rect(col2_left, row_y, col2_right - col2_left, row_height)
+        
+        c.drawCentredString(col1_left + (col2_left - col1_left)/2, row_y + 2, f"Payable After {due_date_str}:")
+        c.drawCentredString(col2_left + (col2_right - col2_left)/2, row_y + 2, f"{payable_after:.0f}")
         
         # ===== FOOTER (Centered in empty space between table and signatures) =====
-        table_bottom = totals_y - 10
+        table_bottom = row_y - 10
         signature_y = y + 25
         footer_center_y = (table_bottom + signature_y) / 2
         

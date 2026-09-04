@@ -4,7 +4,7 @@ Fee Challan Generation Screen for Super Scholars School Management System
 
 import customtkinter as ctk
 from tkinter import messagebox
-from datetime import datetime
+from datetime import datetime, date
 import sys
 import os
 
@@ -16,7 +16,7 @@ from app.services.fee_service import FeeService
 from app.ui.challan_preview_window import ChallanPreviewWindow
 
 class FeeChallanlScreen(ctk.CTkFrame):
-    """Fee Challan Generation Screen with Month Dropdown in Header"""
+    """Fee Challan Generation Screen with Month, Year, Date Selector, and Global Exam Input in Header"""
     
     def __init__(self, parent, db: Session = None):
         super().__init__(parent)
@@ -30,6 +30,9 @@ class FeeChallanlScreen(ctk.CTkFrame):
         self.selected_families = []
         self.table_rows = []
         self.current_month = "January"
+        self.current_year = str(datetime.now().year)  # Default to current year
+        self.global_exam_fee = 0.0  # Global exam fee
+        self.due_date = date.today()  # Default due date is today
         
         # Cache for arrears (family_id -> total_arrears)
         self.arrears_cache = {}
@@ -123,6 +126,28 @@ class FeeChallanlScreen(ctk.CTkFrame):
         )
         self.clear_btn.pack(side="left", padx=5, pady=15)
         
+        # ===== DATE SELECTOR =====
+        date_label = ctk.CTkLabel(
+            control_frame,
+            text="Due Date:",
+            font=("Arial", 14, "bold"),
+            text_color="#1e3a5f"
+        )
+        date_label.pack(side="left", padx=(20, 5), pady=15)
+        
+        # Use an entry field for date (YYYY-MM-DD format)
+        self.date_entry = ctk.CTkEntry(
+            control_frame,
+            placeholder_text="YYYY-MM-DD",
+            font=("Arial", 13),
+            height=40,
+            width=150,
+            border_color="#2980b9",
+            fg_color="#e8f4fc"
+        )
+        self.date_entry.insert(0, date.today().strftime("%Y-%m-%d"))
+        self.date_entry.pack(side="left", padx=5, pady=15)
+        
         # ===== SELECT ALL CHECKBOX =====
         self.check_all_var = ctk.BooleanVar(value=False)
         self.check_all_checkbox = ctk.CTkCheckBox(
@@ -143,25 +168,54 @@ class FeeChallanlScreen(ctk.CTkFrame):
         table_container.pack(fill="both", expand=True, padx=20, pady=10)
         
         # Define column widths (FIXED - no overlap possible)
-        # New order: Checkbox, Family ID, Students, Student IDs, Month, Monthly Fee, Concession, Arrears, Admission, Registration, Exam, Transport, Other, Total
-        self.col_widths = [60, 140, 220, 200, 120, 130, 110, 120, 100, 110, 100, 110, 100, 120]
-        self.headers = ["✓", "Family ID", "Student(s)", "Student ID(s)", "Month", 
+        # New order: Checkbox, Family ID, Students, Student IDs, YEAR, MONTH, Monthly Fee, Concession, Arrears, Admission, Registration, EXAM, Transport, Other, Total
+        self.col_widths = [60, 140, 220, 200, 100, 120, 130, 110, 120, 100, 110, 100, 110, 100, 120]
+        self.headers = ["✓", "Family ID", "Student(s)", "Student ID(s)", "Year", "Month",
                        "Monthly Fee", "Concession", "Arrears", "Admission", 
                        "Registration", "Exam", "Transport", "Other", "Total for Month"]
         
         # Create header row
-        header_row = ctk.CTkFrame(table_container, fg_color="#1e3a5f", height=70)
+        header_row = ctk.CTkFrame(table_container, fg_color="#1e3a5f", height=80)
         header_row.pack(fill="x", pady=(0, 4))
         header_row.pack_propagate(False)
         
         for i, (header_text, width) in enumerate(zip(self.headers, self.col_widths)):
             # Create a fixed-width frame for each header cell with padding
-            cell_frame = ctk.CTkFrame(header_row, fg_color="#1e3a5f", width=width + 10, height=70)
+            cell_frame = ctk.CTkFrame(header_row, fg_color="#1e3a5f", width=width + 10, height=80)
             cell_frame.pack(side="left", padx=2, pady=0)
             cell_frame.pack_propagate(False)
             
-            # SPECIAL: For Month column (index 4), add heading + dropdown
+            # SPECIAL: For Year column (index 4), add heading + dropdown
             if i == 4:
+                year_heading = ctk.CTkLabel(
+                    cell_frame,
+                    text="Year",
+                    font=("Arial", 11, "bold"),
+                    text_color="white",
+                    anchor="center"
+                )
+                year_heading.pack(pady=(5, 2))
+                
+                # Generate year list from 2015 to 2050
+                year_values = [str(year) for year in range(2015, 2051)]
+                
+                self.header_year_var = ctk.StringVar(value=self.current_year)
+                year_dropdown = ctk.CTkOptionMenu(
+                    cell_frame,
+                    values=year_values,
+                    variable=self.header_year_var,
+                    width=width - 10,
+                    height=28,
+                    font=("Arial", 11, "bold"),
+                    fg_color="#2980b9",
+                    button_color="#1e6fa8",
+                    text_color="white",
+                    command=self.on_year_change
+                )
+                year_dropdown.pack(pady=(0, 5))
+            
+            # SPECIAL: For Month column (index 5), add heading + dropdown
+            elif i == 5:
                 month_heading = ctk.CTkLabel(
                     cell_frame,
                     text="Month",
@@ -186,6 +240,33 @@ class FeeChallanlScreen(ctk.CTkFrame):
                     command=self.on_month_change
                 )
                 month_dropdown.pack(pady=(0, 5))
+            
+            # SPECIAL: For Exam column (index 11), add heading + input field
+            elif i == 11:
+                exam_heading = ctk.CTkLabel(
+                    cell_frame,
+                    text="Exam",
+                    font=("Arial", 11, "bold"),
+                    text_color="white",
+                    anchor="center"
+                )
+                exam_heading.pack(pady=(5, 2))
+                
+                self.header_exam_entry = ctk.CTkEntry(
+                    cell_frame,
+                    width=width - 10,
+                    height=28,
+                    font=("Arial", 11, "bold"),
+                    justify="center",
+                    placeholder_text="0",
+                    fg_color="white",
+                    border_color="#2980b9",
+                    text_color="black"
+                )
+                self.header_exam_entry.insert(0, "0")
+                self.header_exam_entry.pack(pady=(0, 5))
+                self.header_exam_entry.bind("<KeyRelease>", self.on_exam_change)
+                
             else:
                 header_label = ctk.CTkLabel(
                     cell_frame,
@@ -209,6 +290,36 @@ class FeeChallanlScreen(ctk.CTkFrame):
         # Store row references
         self.row_frames = []
     
+    def on_year_change(self, year):
+        """Handle year change from header dropdown"""
+        self.current_year = year
+        
+        # Recalculate arrears for ALL families (efficiently)
+        self.load_arrears_for_month(self.current_month)
+        
+        # Update ALL row data and displays
+        for row_data in self.table_rows:
+            row_data['year'] = year
+            
+            # Update the year display label
+            if 'year_display' in row_data and row_data['year_display'] is not None:
+                row_data['year_display'].configure(text=year)
+                row_data['year_display'].update_idletasks()
+            
+            # Update the arrears display label
+            family_id = row_data['family_id']
+            total_family_arrears = self.arrears_cache.get(family_id, 0)
+            row_data['arrears'] = total_family_arrears
+            
+            if 'arrears_label' in row_data and row_data['arrears_label'] is not None:
+                row_data['arrears_label'].configure(text=f"Rs. {total_family_arrears:,.0f}")
+                row_data['arrears_label'].update_idletasks()
+            
+            # Recalculate total for this month
+            self.update_row_total(row_data)
+        
+        print(f"Year '{year}' applied to all {len(self.table_rows)} rows")
+    
     def on_month_change(self, month):
         """Handle month change from header dropdown"""
         self.current_month = month
@@ -220,26 +331,63 @@ class FeeChallanlScreen(ctk.CTkFrame):
         for row_data in self.table_rows:
             row_data['month'] = month
             
-            # Get cached arrears for this family
-            family_id = row_data['family_id']
-            total_family_arrears = self.arrears_cache.get(family_id, 0)
-            row_data['arrears'] = total_family_arrears
-            
-            # Update the arrears display label
-            if 'arrears_label' in row_data and row_data['arrears_label'] is not None:
-                row_data['arrears_label'].configure(text=f"Rs. {total_family_arrears:,.0f}")
-                row_data['arrears_label'].update_idletasks()
-            
             # Update the month display label
             if 'month_display' in row_data and row_data['month_display'] is not None:
                 row_data['month_display'].configure(text=month)
                 row_data['month_display'].update_idletasks()
             
+            # Update the arrears display label
+            family_id = row_data['family_id']
+            total_family_arrears = self.arrears_cache.get(family_id, 0)
+            row_data['arrears'] = total_family_arrears
+            
+            if 'arrears_label' in row_data and row_data['arrears_label'] is not None:
+                row_data['arrears_label'].configure(text=f"Rs. {total_family_arrears:,.0f}")
+                row_data['arrears_label'].update_idletasks()
+            
             # Recalculate total for this month
             self.update_row_total(row_data)
         
         print(f"Month '{month}' applied to all {len(self.table_rows)} rows")
-        print(f"   Updated: {[r['month'] for r in self.table_rows]}")
+    
+    def on_exam_change(self, event=None):
+        """Handle global exam fee input change"""
+        try:
+            # Get the value from the header exam entry
+            exam_value = float(self.header_exam_entry.get()) if self.header_exam_entry.get() else 0.0
+            self.global_exam_fee = exam_value
+            
+            # Update ALL row data and displays
+            for row_data in self.table_rows:
+                # Get number of students in this family
+                num_students = len(row_data['students'])
+                
+                # Calculate exam fee for this family (multiply by number of students)
+                family_exam_fee = exam_value * num_students
+                row_data['exam_fee'] = family_exam_fee
+                
+                # Update the exam entry in the row
+                if 'editable_entries' in row_data and len(row_data['editable_entries']) >= 3:
+                    # Index 2 corresponds to exam fee (0=admission, 1=registration, 2=exam, 3=transport)
+                    exam_entry = row_data['editable_entries'][2]
+                    exam_entry.delete(0, "end")
+                    exam_entry.insert(0, str(int(family_exam_fee)))
+                
+                # Recalculate total for this family
+                self.update_row_total(row_data)
+            
+            print(f"Global Exam fee '{exam_value}' applied to all {len(self.table_rows)} families (multiplied by student count)")
+            
+        except ValueError:
+            # If invalid input, reset to 0
+            self.global_exam_fee = 0.0
+            for row_data in self.table_rows:
+                row_data['exam_fee'] = 0.0
+                if 'editable_entries' in row_data and len(row_data['editable_entries']) >= 3:
+                    exam_entry = row_data['editable_entries'][2]
+                    exam_entry.delete(0, "end")
+                    exam_entry.insert(0, "0")
+                self.update_row_total(row_data)
     
     def load_arrears_for_month(self, month):
         """Efficiently load all arrears for a given month in ONE query"""
@@ -253,6 +401,7 @@ class FeeChallanlScreen(ctk.CTkFrame):
         }
         
         current_month_num = month_order.get(month, 1)
+        current_year_num = int(self.current_year) if self.current_year else datetime.now().year
         
         # Get ALL challans from PREVIOUS months for ALL families
         all_challans = self.db.query(FeeChallan).all()
@@ -261,15 +410,24 @@ class FeeChallanlScreen(ctk.CTkFrame):
         for challan in all_challans:
             challan_month = challan.challan_month
             challan_month_num = month_order.get(challan_month, 1)
+            challan_year_num = int(challan.challan_year) if challan.challan_year else datetime.now().year
             
-            # Only count challans from months BEFORE the current month
-            if challan_month_num < current_month_num:
-                family_id = challan.family_id
-                if family_id not in self.arrears_cache:
-                    self.arrears_cache[family_id] = 0
-                # Use exact_payable if not paid
+            # Only count challans from months BEFORE the current month in the SAME year or PREVIOUS years
+            if challan_year_num < current_year_num:
+                # Previous years - all unpaid challans count
                 if not challan.is_paid:
+                    family_id = challan.family_id
+                    if family_id not in self.arrears_cache:
+                        self.arrears_cache[family_id] = 0
                     self.arrears_cache[family_id] += challan.exact_payable
+            elif challan_year_num == current_year_num:
+                # Same year - only count months BEFORE current month
+                if challan_month_num < current_month_num:
+                    if not challan.is_paid:
+                        family_id = challan.family_id
+                        if family_id not in self.arrears_cache:
+                            self.arrears_cache[family_id] = 0
+                        self.arrears_cache[family_id] += challan.exact_payable
     
     def load_families_data(self):
         """Load all families with students from database"""
@@ -327,27 +485,34 @@ class FeeChallanlScreen(ctk.CTkFrame):
         total_family_arrears = self.arrears_cache.get(family_id, 0)
         total_family_concession = sum(s.fee_concession for s in students)
         
+        # Calculate initial exam fee based on global exam fee and student count
+        num_students = len(students)
+        initial_exam_fee = self.global_exam_fee * num_students
+        
         # Create row data
         row_data = {
             'family_id': family_id,
             'guardian_name': family_data.get('guardian_name', ''),
             'guardian_cnic': family_data.get('guardian_cnic', ''),
             'students': students,
+            'num_students': num_students,
             'monthly_fee': family_data['total_monthly_fee'],
+            'year': self.current_year,
             'month': self.current_month,
             'admission_fee': 0,
             'registration_fee': 0,
-            'exam_fee': 0,
+            'exam_fee': initial_exam_fee,
             'transport_fee': 0,
             'arrears': total_family_arrears,
             'fee_concession': total_family_concession,
             'other_fee': 0,
-            'total_for_month': 0,  # New field for total
+            'total_for_month': 0,
             'checked': False,
+            'year_display': None,
             'month_display': None,
             'arrears_label': None,
-            'total_label': None,  # New field for total label
-            'editable_entries': []  # Store editable entries for recalculation
+            'total_label': None,
+            'editable_entries': []
         }
         
         # Create row frame with fixed height
@@ -419,13 +584,29 @@ class FeeChallanlScreen(ctk.CTkFrame):
         )
         student_ids_label.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Column 4: Month
+        # Column 4: YEAR (First)
         cell_4 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[4] + 10)
         cell_4.pack(side="left", padx=2)
         cell_4.pack_propagate(False)
         
-        month_display = ctk.CTkLabel(
+        year_display = ctk.CTkLabel(
             cell_4,
+            text=self.current_year,
+            font=("Arial", 12, "bold"),
+            text_color="#2c3e50",
+            anchor="center"
+        )
+        year_display.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        row_data['year_display'] = year_display
+        
+        # Column 5: MONTH (Second)
+        cell_5 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[5] + 10)
+        cell_5.pack(side="left", padx=2)
+        cell_5.pack_propagate(False)
+        
+        month_display = ctk.CTkLabel(
+            cell_5,
             text=self.current_month,
             font=("Arial", 12, "bold"),
             text_color="#2c3e50",
@@ -435,13 +616,13 @@ class FeeChallanlScreen(ctk.CTkFrame):
         
         row_data['month_display'] = month_display
         
-        # Column 5: Monthly Fee (Green, Disabled)
-        cell_5 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[5] + 10)
-        cell_5.pack(side="left", padx=2)
-        cell_5.pack_propagate(False)
+        # Column 6: Monthly Fee (Green, Disabled)
+        cell_6 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[6] + 10)
+        cell_6.pack(side="left", padx=2)
+        cell_6.pack_propagate(False)
         
         monthly_fee_label = ctk.CTkLabel(
-            cell_5,
+            cell_6,
             text=f"Rs. {row_data['monthly_fee']:,.0f}",
             font=("Arial", 12, "bold"),
             text_color="#2ecc71",
@@ -451,13 +632,13 @@ class FeeChallanlScreen(ctk.CTkFrame):
         )
         monthly_fee_label.pack(fill="both", expand=True, padx=5, pady=15)
         
-        # Column 6: Concession (Purple, Disabled)
-        cell_6 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[6] + 10)
-        cell_6.pack(side="left", padx=2)
-        cell_6.pack_propagate(False)
+        # Column 7: Concession (Purple, Disabled)
+        cell_7 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[7] + 10)
+        cell_7.pack(side="left", padx=2)
+        cell_7.pack_propagate(False)
         
         concession_label = ctk.CTkLabel(
-            cell_6,
+            cell_7,
             text=f"Rs. {row_data['fee_concession']:,.0f}",
             font=("Arial", 12, "bold"),
             text_color="#8e44ad",
@@ -467,14 +648,14 @@ class FeeChallanlScreen(ctk.CTkFrame):
         )
         concession_label.pack(fill="both", expand=True, padx=5, pady=15)
         
-        # Column 7: Arrears (Red, Disabled)
-        cell_7 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[7] + 10)
-        cell_7.pack(side="left", padx=2)
-        cell_7.pack_propagate(False)
+        # Column 8: Arrears (Red, Disabled) - DISPLAY ARREARS HERE
+        cell_8 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[8] + 10)
+        cell_8.pack(side="left", padx=2)
+        cell_8.pack_propagate(False)
         
         arrears_label = ctk.CTkLabel(
-            cell_7,
-            text=f"Rs. {row_data['arrears']:,.0f}",
+            cell_8,
+            text=f"Rs. {total_family_arrears:,.0f}",
             font=("Arial", 12, "bold"),
             text_color="#e74c3c",
             fg_color="#fdecea",
@@ -484,9 +665,9 @@ class FeeChallanlScreen(ctk.CTkFrame):
         arrears_label.pack(fill="both", expand=True, padx=5, pady=15)
         row_data['arrears_label'] = arrears_label
         
-        # Columns 8-11: Admission, Registration, Exam, Transport (Editable)
+        # Columns 9-12: Admission, Registration, Exam, Transport (Editable)
         editable_fields = ['admission_fee', 'registration_fee', 'exam_fee', 'transport_fee']
-        for col_idx, field_name in enumerate(editable_fields, start=8):
+        for col_idx, field_name in enumerate(editable_fields, start=9):
             cell = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[col_idx] + 10)
             cell.pack(side="left", padx=2)
             cell.pack_propagate(False)
@@ -501,19 +682,25 @@ class FeeChallanlScreen(ctk.CTkFrame):
                 border_color="#bdc3c7",
                 fg_color="white"
             )
-            entry.insert(0, "0")
+            
+            # If it's the exam field, set the initial value from global exam fee
+            if field_name == 'exam_fee':
+                entry.insert(0, str(int(initial_exam_fee)))
+            else:
+                entry.insert(0, "0")
+            
             entry.pack(pady=15)
             entry.bind("<KeyRelease>", lambda e, r=row_data, f=field_name, ent=entry: self.update_editable_fee(r, f, ent))
             row_data['editable_entries'].append(entry)
         
-        # Column 12: Other (Editable)
-        cell_12 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[12] + 10)
-        cell_12.pack(side="left", padx=2)
-        cell_12.pack_propagate(False)
+        # Column 13: Other (Editable)
+        cell_13 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[13] + 10)
+        cell_13.pack(side="left", padx=2)
+        cell_13.pack_propagate(False)
         
         other_entry = ctk.CTkEntry(
-            cell_12,
-            width=self.col_widths[12],
+            cell_13,
+            width=self.col_widths[13],
             height=30,
             font=("Arial", 11),
             justify="center",
@@ -526,13 +713,13 @@ class FeeChallanlScreen(ctk.CTkFrame):
         other_entry.bind("<KeyRelease>", lambda e, r=row_data, ent=other_entry: self.update_editable_fee(r, 'other_fee', ent))
         row_data['editable_entries'].append(other_entry)
         
-        # Column 13: Total for Month (Auto-calculated)
-        cell_13 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[13] + 10)
-        cell_13.pack(side="left", padx=2)
-        cell_13.pack_propagate(False)
+        # Column 14: Total for Month (Auto-calculated)
+        cell_14 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[14] + 10)
+        cell_14.pack(side="left", padx=2)
+        cell_14.pack_propagate(False)
         
         total_label = ctk.CTkLabel(
-            cell_13,
+            cell_14,
             text="Rs. 0",
             font=("Arial", 12, "bold"),
             text_color="#1e3a5f",
@@ -652,41 +839,13 @@ class FeeChallanlScreen(ctk.CTkFrame):
         )
         generate_btn.pack(side="left", padx=10)
     
-    def generate_challans(self):
-        if not self.selected_families:
-            messagebox.showwarning("No Selection", "Please select at least one family!")
-            return
+    def reset_form(self):
+        """Reset the form to default state"""
+        # Reset month to default (January)
+        self.current_month = "January"
+        self.header_month_var.set("January")
         
-        try:
-            challans_data = []
-            
-            for row_data in self.selected_families:
-                family_challan_data = {
-                    'family_id': row_data['family_id'],
-                    'guardian_name': row_data.get('guardian_name', ''),
-                    'guardian_cnic': row_data.get('guardian_cnic', ''),
-                    'challan_month': self.current_month,
-                    'students': row_data['students'],
-                    'total_monthly_tuition_fee': row_data['monthly_fee'],
-                    'total_concession': row_data['fee_concession'],
-                    'total_arrears': row_data['arrears'],
-                    'admission_fee': row_data['admission_fee'],
-                    'registration_fee': row_data['registration_fee'],
-                    'exam_fee': row_data['exam_fee'],
-                    'transport_fee': row_data['transport_fee'],
-                    'other_fee': row_data['other_fee'],
-                    'exact_payable': row_data['total_for_month']  # Use the calculated total
-                }
-                challans_data.append(family_challan_data)
-            
-            if not challans_data:
-                messagebox.showwarning("No Data", "No families found for selected rows!")
-                return
-            
-            preview_window = ChallanPreviewWindow(self, challans_data, self.db, self.fee_service)
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate challans: {str(e)}")
-    
-    def print_challans(self, count: int):
-        pass
+        # Reset year to current year
+        self.current_year = str(datetime.now().year)
+        self.header_year_var.set(self.current_year)
+        
