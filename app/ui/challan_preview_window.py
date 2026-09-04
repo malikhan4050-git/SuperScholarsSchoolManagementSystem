@@ -159,6 +159,8 @@ class ChallanPreviewWindow(ctk.CTkToplevel):
             family_id = challan_data.get('family_id', 'N/A')
             guardian_name = challan_data.get('guardian_name', 'N/A')
             month = challan_data.get('challan_month', 'N/A')
+            year = challan_data.get('challan_year', 'N/A')
+            due_date = challan_data.get('due_date', 'N/A')  # NEW: Due date field
             students = challan_data.get('students', [])
             
             total_monthly = challan_data.get('total_monthly_tuition_fee', 0)
@@ -176,7 +178,8 @@ class ChallanPreviewWindow(ctk.CTkToplevel):
             summary += f"Challan #{i}:\n"
             summary += f"  Family ID: {family_id}\n"
             summary += f"  Guardian: {guardian_name}\n"
-            summary += f"  Month: {month}\n"
+            summary += f"  Month: {month} {year}\n"
+            summary += f"  Due Date: {due_date}\n"  # NEW: Due date in summary
             summary += f"  Students ({len(students)}):\n"
             
             for student in students:
@@ -203,6 +206,8 @@ class ChallanPreviewWindow(ctk.CTkToplevel):
                 data_to_save = {
                     'family_id': challan_data['family_id'],
                     'challan_month': challan_data['challan_month'],
+                    'challan_year': challan_data.get('challan_year', str(datetime.now().year)),
+                    'due_date': challan_data.get('due_date', date.today().strftime("%Y-%m-%d")),  # NEW: Due date field
                     'students': challan_data['students'],
                     'total_monthly_tuition_fee': challan_data.get('total_monthly_tuition_fee', 0),
                     'total_arrears': challan_data.get('total_arrears', 0),
@@ -217,8 +222,12 @@ class ChallanPreviewWindow(ctk.CTkToplevel):
                 result = self.fee_service.create_challan(data_to_save)
                 if result['success']:
                     self.generated_challan_ids.append(result['challan_id'])
+                    print(f"Created challan: {result['bill_id']} (ID: {result['challan_id']})")
                 else:
                     print(f"Skipped: {result['message']}")
+            
+            if not self.generated_challan_ids:
+                messagebox.showwarning("Warning", "No challans were created! They may already exist for this month.")
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create challans: {str(e)}")
@@ -226,6 +235,10 @@ class ChallanPreviewWindow(ctk.CTkToplevel):
     def generate_pdf(self, mode="4"):
         """Generate PDF and save to challans directory"""
         try:
+            if not self.generated_challan_ids:
+                messagebox.showerror("Error", "No challans available to generate PDF!")
+                return
+            
             footer_text = self.footer_text.get("1.0", "end-1c")
             
             if not footer_text.strip():
@@ -249,6 +262,8 @@ class ChallanPreviewWindow(ctk.CTkToplevel):
                 challan = self.db.query(FeeChallan).filter(FeeChallan.id == challan_id).first()
                 if challan:
                     challan.urdu_footer = footer_text
+                    challan.status = "Printed"
+                    challan.printed_date = date.today()
             self.db.commit()
             
             if pdf_path:
