@@ -241,7 +241,7 @@ class FeeService:
         return outstanding
     
     # ===== NEW METHOD: Get total outstanding amount using exact_payable and is_paid =====
-    def get_family_outstanding_amount_for_month(self, family_id: str, current_month: str) -> float:
+    def get_family_outstanding_amount_for_month(self, family_id: str, current_month: str, current_year: str = None) -> float:
         """
         Get total outstanding/arrears amount for a FAMILY for a specific month.
         Uses exact_payable and is_paid fields to accurately track unpaid amounts.
@@ -254,6 +254,7 @@ class FeeService:
         }
         
         current_month_num = month_order.get(current_month, 1)
+        current_year_num = int(current_year) if current_year else datetime.now().year
         
         # Get all challans for this family
         all_family_challans = self.db.query(FeeChallan).filter(
@@ -264,17 +265,23 @@ class FeeService:
         for challan in all_family_challans:
             challan_month = challan.challan_month
             challan_month_num = month_order.get(challan_month, 1)
+            challan_year_num = int(challan.challan_year) if challan.challan_year else datetime.now().year
             
-            # Only count challans from months BEFORE the current month
-            if challan_month_num < current_month_num:
-                # If not paid, add the exact_payable for that month
+            # Only count challans from months BEFORE the current month in the SAME year or PREVIOUS years
+            if challan_year_num < current_year_num:
+                # Previous years - all unpaid challans count
                 if not challan.is_paid:
                     total_outstanding += challan.exact_payable
+            elif challan_year_num == current_year_num:
+                # Same year - only count months BEFORE current month
+                if challan_month_num < current_month_num:
+                    if not challan.is_paid:
+                        total_outstanding += challan.exact_payable
         
         return total_outstanding
     
     # ===== KEEP THIS METHOD FOR BACKWARD COMPATIBILITY =====
-    def get_student_outstanding_amount(self, student_id: int, current_month: str = None) -> float:
+    def get_student_outstanding_amount(self, student_id: int, current_month: str = None, current_year: str = None) -> float:
         """
         Get total outstanding/arrears amount for a single student.
         This is kept for backward compatibility but should NOT be used for family totals.
@@ -292,7 +299,7 @@ class FeeService:
         # If current_month is provided, filter to only PREVIOUS months
         if current_month:
             # Use the family-level method to avoid double-counting
-            return self.get_family_outstanding_amount_for_month(guardian.family_id, current_month)
+            return self.get_family_outstanding_amount_for_month(guardian.family_id, current_month, current_year)
         
         # If no current_month provided, sum all unpaid challans for this family
         outstanding = self.db.query(FeeChallan).filter(
@@ -316,13 +323,14 @@ class FeeService:
             # Check if challan already exists for this family for this month
             existing_challan = self.db.query(FeeChallan).filter(
                 FeeChallan.family_id == challan_data['family_id'],
-                FeeChallan.challan_month == challan_data['challan_month']
+                FeeChallan.challan_month == challan_data['challan_month'],
+                FeeChallan.challan_year == challan_data.get('challan_year', str(datetime.now().year))
             ).first()
             
             if existing_challan:
                 return {
                     "success": False, 
-                    "message": f"Challan already exists for this family for {challan_data['challan_month']}!"
+                    "message": f"Challan already exists for this family for {challan_data['challan_month']} {challan_data.get('challan_year', '')}!"
                 }
             
             # Generate bill ID using FAMILY ID and SELECTED MONTH
@@ -340,9 +348,19 @@ class FeeService:
             total_monthly = sum(s.monthly_tuition_fee for s in students)
             total_concession = sum(s.fee_concession for s in students)
             
+            # Get the challan year (NEW)
+            challan_year = challan_data.get('challan_year', str(datetime.now().year))
+            
+            # Get the due date (NEW)
+            due_date_str = challan_data.get('due_date', date.today().strftime("%Y-%m-%d"))
+            try:
+                due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                due_date = date.today()
+            
             # Calculate total arrears for the FAMILY (ONCE - not per student)
             total_arrears = self.get_family_outstanding_amount_for_month(
-                challan_data['family_id'], challan_data['challan_month']
+                challan_data['family_id'], challan_data['challan_month'], challan_year
             )
             
             # Get the extra fees from challan_data
@@ -372,25 +390,27 @@ class FeeService:
                     'arrears': total_arrears  # Same for all students in family
                 })
             
-            # Create challan record - ONE PER FAMILY (INCLUDING ALL FEES)
+            # Create challan record - ONE PER FAMILY (INCLUDING ALL FEES, YEAR, AND DUE DATE)
             challan = FeeChallan(
                 bill_id=bill_id,
                 family_id=challan_data['family_id'],
                 challan_month=challan_data['challan_month'],
+                challan_year=challan_year,
+                due_date=due_date,  # ✅ NOW SAVING THE DUE DATE
                 guardian_name=guardian.guardian_name,
                 guardian_cnic=guardian.cnic,
                 total_monthly_tuition_fee=total_monthly,
                 total_admission_fee=admission_fee,
-                total_registration_fee=registration_fee,  # ✅ ADDED
+                total_registration_fee=registration_fee,
                 total_exam_fee=exam_fee,
-                total_transport_fee=transport_fee,        # ✅ ADDED
+                total_transport_fee=transport_fee,
                 total_other_fee=other_fee,
                 total_arrears=total_arrears,
                 total_fee_concession=total_concession,
                 total_amount=total_amount,
                 amount_due=amount_due,
-                exact_payable=exact_payable,  # Store exact payable for this month
-                is_paid=False,  # Default to unpaid
+                exact_payable=exact_payable,
+                is_paid=False,
                 paid_amount=0,
                 remaining_amount=amount_due,
                 urdu_footer=challan_data.get('urdu_footer', 'Please pay fees before the due date')
