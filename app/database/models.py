@@ -217,6 +217,10 @@ class FeeChallan(Base):
     bill_id = Column(String(50), unique=True, nullable=False)  # FM2600001-JAN
     family_id = Column(String(20), nullable=False)  # FMYY00001 format - ONE challan per family
     challan_month = Column(String(20), nullable=False)  # e.g., "January"
+    challan_year = Column(String(10), default=str(datetime.now().year))  # Field for year
+    
+    # Due Date for the challan
+    due_date = Column(Date, default=date.today)  # NEW FIELD - Due date for the challan
     
     # Guardian/Student Information (Stored for quick access)
     guardian_name = Column(String(100), default="")
@@ -229,8 +233,8 @@ class FeeChallan(Base):
     total_exam_fee = Column(Float, default=0.0)
     total_security_fee = Column(Float, default=0.0)
     total_admission_fee = Column(Float, default=0.0)
-    total_registration_fee = Column(Float, default=0.0)  # NEW FIELD
-    total_transport_fee = Column(Float, default=0.0)      # NEW FIELD
+    total_registration_fee = Column(Float, default=0.0)  # Field for registration fee
+    total_transport_fee = Column(Float, default=0.0)      # Field for transport fee
     total_other_fee = Column(Float, default=0.0)
     total_arrears = Column(Float, default=0.0)
     total_scholarship = Column(Float, default=0.0)
@@ -264,7 +268,7 @@ class FeeChallan(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
-        return f"FeeChallan(Bill ID: {self.bill_id}, Family: {self.family_id}, Amount: {self.total_amount})"
+        return f"FeeChallan(Bill ID: {self.bill_id}, Family: {self.family_id}, Month: {self.challan_month} {self.challan_year}, Due: {self.due_date}, Amount: {self.total_amount})"
 
 # Create all tables
 def init_database():
@@ -326,6 +330,20 @@ def init_database():
         with engine.begin() as connection:
             connection.execute(
                 text("ALTER TABLE fee_challans ADD COLUMN total_transport_fee FLOAT DEFAULT 0.0")
+            )
+    
+    # Check if challan_year column exists
+    if "challan_year" not in challan_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE fee_challans ADD COLUMN challan_year VARCHAR(10) DEFAULT '2026'")
+            )
+    
+    # Check if due_date column exists
+    if "due_date" not in challan_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE fee_challans ADD COLUMN due_date DATE")
             )
     
     # Check if student_id column exists in fee_challans table (for backward compatibility)
