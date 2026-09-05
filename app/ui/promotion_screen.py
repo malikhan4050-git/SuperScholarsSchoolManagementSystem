@@ -185,60 +185,81 @@ class PromotionScreen(ctk.CTkFrame):
     
     def search_class(self):
         """Search for students in the entered class"""
+        print(f"DEBUG: search_class called with input: '{self.class_entry.get()}'")
         
-        # Get the class input
-        class_input = self.class_entry.get().strip()
-        
-        if not class_input:
-            messagebox.showwarning("Warning", "Please enter a class number!")
-            return
-        
-        # Clean the input - extract only numbers
-        import re
-        class_num = ''.join(re.findall(r'\d+', class_input))
-        
-        if not class_num:
-            messagebox.showwarning("Warning", "Please enter a valid class number!")
-            return
-        
-        # Format the class name
-        class_name = f"Class {class_num}" if not class_input.startswith("Class") else class_input
-        
-        # Get students from this class
-        self.class_students = self.student_service.get_students_by_class(class_name)
-        
-        if not self.class_students:
-            messagebox.showinfo("No Students", f"No students found in {class_name}!")
-            self.clear_students_list()
-            return
-        
-        # Display students
-        self.display_students()
-        
-        # Enable promote button
-        self.promote_btn.configure(state="normal")
+        try:
+            class_input = self.class_entry.get().strip()
+            print(f"DEBUG: class_input after strip: '{class_input}'")
+            
+            if not class_input:
+                print("DEBUG: Empty input")
+                messagebox.showwarning("Warning", "Please enter a class number!")
+                return
+            
+            import re
+            class_num = ''.join(re.findall(r'\d+', class_input))
+            print(f"DEBUG: Extracted class_num: '{class_num}'")
+            
+            if not class_num:
+                print("DEBUG: No class number found")
+                messagebox.showwarning("Warning", "Please enter a valid class number!")
+                return
+            
+            class_name = f"Class {class_num}" if not class_input.startswith("Class") else class_input
+            print(f"DEBUG: Searching for class_name: '{class_name}'")
+            
+            # Direct query
+            self.class_students = self.db.query(Student).filter(Student.class_grade == class_name).all()
+            print(f"DEBUG: Found {len(self.class_students)} students from direct query")
+            
+            if not self.class_students:
+                print("DEBUG: No students from direct query, trying broader search")
+                all_students = self.db.query(Student).all()
+                self.class_students = [s for s in all_students if class_num in s.class_grade]
+                print(f"DEBUG: Found {len(self.class_students)} students from broader search")
+            
+            if not self.class_students:
+                print("DEBUG: No students found at all")
+                messagebox.showinfo("No Students", f"No students found in {class_name}!")
+                self.clear_search()
+                return
+            
+            print(f"DEBUG: About to display {len(self.class_students)} students")
+            self.display_students()
+            self.promote_btn.configure(state="normal")
+            print("DEBUG: Done - promote button enabled")
+            
+        except Exception as e:
+            print(f"DEBUG: ERROR - {str(e)}")
+            messagebox.showerror("Error", f"Search failed: {str(e)}")
     
     def display_students(self):
         """Display the students in the scrollable frame"""
         
-        # Clear existing widgets
-        self.clear_students_list()
+        # Clear the scroll frame
+        for widget in self.scroll_frame.winfo_children():
+            widget.destroy()
         
-        # Show header with class info
+        # Reset selections
+        self.student_checkboxes = []
+        self.selected_students = []
+        
+        # Show header with class info (Without "Class" prefix)
         if self.class_students:
             class_name = self.class_students[0].class_grade if self.class_students else "Unknown"
+            # Remove "Class" prefix for display
+            import re
+            class_num = ''.join(re.findall(r'\d+', class_name))
+            display_class = class_num if class_num else class_name
             header_label = ctk.CTkLabel(
                 self.scroll_frame,
-                text=f"Students in {class_name} ({len(self.class_students)} students)",
+                text=f"Students in Class {display_class} ({len(self.class_students)} students)",
                 font=("Arial", 18, "bold"),
                 text_color="#1e3a5f"
             )
             header_label.pack(pady=(0, 10))
         
         # Display each student with a checkbox
-        self.student_checkboxes = []
-        self.selected_students = []
-        
         for student in self.class_students:
             # Create a card for each student
             student_card = ctk.CTkFrame(
@@ -334,11 +355,19 @@ class PromotionScreen(ctk.CTkFrame):
         # Get next class name
         next_class = self.student_service.get_next_class(current_class)
         
+        # Remove "Class" prefix for display
+        import re
+        current_class_num = ''.join(re.findall(r'\d+', current_class))
+        next_class_num = ''.join(re.findall(r'\d+', next_class))
+        
+        display_current = current_class_num if current_class_num else current_class
+        display_next = next_class_num if next_class_num else next_class
+        
         # Confirm promotion
         confirm_msg = (
             f"Are you sure you want to promote {len(self.selected_students)} student(s)?\n\n"
-            f"Current Class: {current_class}\n"
-            f"Next Class: {next_class}\n\n"
+            f"Current Class: {display_current}\n"
+            f"Next Class: {display_next}\n\n"
             f"Their monthly fee will be updated based on the new class."
         )
         
