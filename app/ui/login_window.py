@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from app.database.models import SessionLocal
 from app.utils.auth import Authentication
+from app.utils.center_window import center_window, center_and_maximize
 
 class LoginWindow(ctk.CTk):
     """Login Window Class"""
@@ -21,15 +22,13 @@ class LoginWindow(ctk.CTk):
         
         # Configure window
         self.title("Super Scholars School Management System")
-        self.geometry("1200x700")
-        self.resizable(False, False)
         
         # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         
-        # Center window
-        self.center_window()
+        # UI fix: Center and maximize window after creation
+        self.after(100, lambda: center_and_maximize(self))
         
         # Initialize authentication
         self.db = SessionLocal()
@@ -38,15 +37,6 @@ class LoginWindow(ctk.CTk):
         # Create UI
         self.create_widgets()
         
-    def center_window(self):
-        """Center the window on screen"""
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry(f'{width}x{height}+{x}+{y}')
-    
     def create_widgets(self):
         """Create all widgets for login window"""
         
@@ -58,9 +48,8 @@ class LoginWindow(ctk.CTk):
         # Left Panel (Branding)
         self.left_panel = ctk.CTkFrame(
             self,
-            width=400,
             corner_radius=0,
-            fg_color="#1e3a5f"  # Dark blue
+            fg_color="#1e3a5f"
         )
         self.left_panel.grid(row=0, column=0, sticky="nsew")
         

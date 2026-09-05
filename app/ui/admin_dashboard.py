@@ -18,6 +18,7 @@ from app.services.fee_service import FeeService
 from app.ui.student_form import StudentRegistrationForm
 from app.ui.fee_challan_screen import FeeChallanlScreen
 from app.ui.promotion_screen import PromotionScreen  # Add this import
+from app.utils.center_window import center_and_maximize  # UI FIX
 
 class AdminDashboard(ctk.CTk):
     """Admin Dashboard Class"""
@@ -30,11 +31,13 @@ class AdminDashboard(ctk.CTk):
         
         # Configure window
         self.title("Super Scholars - Admin Dashboard")
-        self.geometry("1400x800")
         
         # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
+        
+        # UI FIX: Center and maximize window after creation
+        self.after(100, lambda: center_and_maximize(self))
         
         # Initialize database
         self.db = SessionLocal()
@@ -69,6 +72,7 @@ class AdminDashboard(ctk.CTk):
             fg_color="#1e3a5f"
         )
         self.sidebar.grid(row=0, column=0, sticky="nsew")
+        self.sidebar.grid_propagate(False)  # UI FIX: Keep fixed width
         
         # Logo
         self.logo_label = ctk.CTkLabel(
@@ -172,6 +176,7 @@ class AdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -242,6 +247,7 @@ class AdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -322,6 +328,7 @@ class AdminDashboard(ctk.CTk):
                 corner_radius=0
             )
             self.header_frame.pack(fill="x")
+            self.header_frame.pack_propagate(False)  # UI FIX
             
             self.header_title = ctk.CTkLabel(
                 self.header_frame,
@@ -506,6 +513,7 @@ class AdminDashboard(ctk.CTk):
                 corner_radius=0
             )
             self.header_frame.pack(fill="x")
+            self.header_frame.pack_propagate(False)  # UI FIX
             
             self.header_title = ctk.CTkLabel(
                 self.header_frame,
@@ -544,6 +552,7 @@ class AdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)  # UI FIX
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -574,6 +583,7 @@ class AdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)  # UI FIX
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,

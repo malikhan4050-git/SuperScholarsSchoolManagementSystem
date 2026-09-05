@@ -55,7 +55,7 @@ class PromotionScreen(ctk.CTkFrame):
         
         header_frame = ctk.CTkFrame(self, fg_color="white", corner_radius=0, height=80)
         header_frame.pack(fill="x", padx=20, pady=(20, 10))
-        header_frame.pack_propagate(False)
+        header_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         title = ctk.CTkLabel(
             header_frame,

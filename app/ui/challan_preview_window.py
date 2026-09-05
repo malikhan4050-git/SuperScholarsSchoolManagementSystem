@@ -10,6 +10,7 @@ from pathlib import Path
 
 # Import models
 from app.database.models import SessionLocal, FeeChallan
+from app.utils.center_window import center_and_maximize  # UI FIX
 
 class ChallanPreviewWindow(ctk.CTkToplevel):
     """Window for previewing challans - FAST version"""
@@ -22,6 +23,9 @@ class ChallanPreviewWindow(ctk.CTkToplevel):
         self.challans_data = challans_data
         self.db = db
         self.fee_service = fee_service
+        
+        # UI FIX: Center and maximize window after creation
+        self.after(100, lambda: center_and_maximize(self))
         
         # Create challans directory if it doesn't exist
         self.challans_dir = os.path.join(

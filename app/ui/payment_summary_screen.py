@@ -14,6 +14,7 @@ from openpyxl import Workbook
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.database.models import SessionLocal, FeeChallan, Student, Guardian, FeeStatus
+from app.utils.center_window import center_and_maximize  # UI FIX
 
 
 class PaymentSummaryScreen(ctk.CTkToplevel):
@@ -32,6 +33,9 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
             "reports"
         )
         Path(self.reports_dir).mkdir(exist_ok=True)
+        
+        # UI FIX: Center and maximize window after creation
+        self.after(100, lambda: center_and_maximize(self))
         
         # Create UI
         self.create_widgets()
@@ -285,7 +289,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
         # Create header row
         header_row = ctk.CTkFrame(table_container, fg_color="#1e3a5f", height=70)
         header_row.pack(fill="x", pady=(0, 2))
-        header_row.pack_propagate(False)
+        header_row.pack_propagate(False)  # UI FIX: keep height consistent
         
         for i, (header_text, width) in enumerate(zip(self.headers, self.col_widths)):
             # Create a fixed-width frame for each header cell with padding
@@ -402,7 +406,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
             height=50
         )
         row_frame.pack(fill="x", pady=1)
-        row_frame.pack_propagate(False)
+        row_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         # Column 0: Bill ID
         cell_0 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[0] + 10)

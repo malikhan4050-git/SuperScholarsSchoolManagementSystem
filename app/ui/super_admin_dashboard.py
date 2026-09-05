@@ -14,6 +14,7 @@ from app.database.models import SessionLocal, User, UserRole, Guardian, Student
 from app.utils.auth import Authentication
 from app.services.fee_service import FeeService
 from app.ui.fee_challan_screen import FeeChallanlScreen
+from app.utils.center_window import center_and_maximize  # UI FIX
 
 class SuperAdminDashboard(ctk.CTk):
     """Super Admin Dashboard Class"""
@@ -26,11 +27,13 @@ class SuperAdminDashboard(ctk.CTk):
         
         # Configure window
         self.title("Super Scholars - Super Admin Dashboard")
-        self.geometry("1400x800")
         
         # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
+        
+        # UI FIX: Center and maximize window after creation
+        self.after(100, lambda: center_and_maximize(self))
         
         # Initialize database
         self.db = SessionLocal()
@@ -64,6 +67,7 @@ class SuperAdminDashboard(ctk.CTk):
             fg_color="#1e3a5f"
         )
         self.sidebar.grid(row=0, column=0, sticky="nsew")
+        self.sidebar.grid_propagate(False)  # UI FIX: Keep fixed width
         
         # Logo
         self.logo_label = ctk.CTkLabel(
@@ -166,6 +170,7 @@ class SuperAdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -235,6 +240,7 @@ class SuperAdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)  # UI FIX
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -326,11 +332,9 @@ class SuperAdminDashboard(ctk.CTk):
         dialog.geometry("500x650")
         dialog.grab_set()
         
-        # Center dialog
-        dialog.update_idletasks()
-        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
-        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
-        dialog.geometry(f"+{x}+{y}")
+        # UI FIX: Center dialog
+        from app.utils.center_window import center_window
+        dialog.after(100, lambda: center_window(dialog, 500, 650))
         
         # Form frame
         form_frame = ctk.CTkFrame(dialog, fg_color="white", corner_radius=10)
@@ -465,6 +469,7 @@ class SuperAdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)  # UI FIX
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -590,6 +595,7 @@ class SuperAdminDashboard(ctk.CTk):
                 corner_radius=0
             )
             self.header_frame.pack(fill="x")
+            self.header_frame.pack_propagate(False)  # UI FIX
             
             self.header_title = ctk.CTkLabel(
                 self.header_frame,

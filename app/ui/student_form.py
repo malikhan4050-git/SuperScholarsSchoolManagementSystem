@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from app.database.models import SessionLocal, Student, Guardian
 from app.services.student_service import StudentService
+from app.utils.center_window import center_window, center_and_maximize  # UI FIX
 
 class StudentRegistrationForm(ctk.CTkToplevel):
     """Professional Student Registration Form - Supports Add & Edit Modes"""
@@ -38,8 +39,8 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         # Store form entries
         self.form_entries = {}
         
-        # Center window
-        self.center_window()
+        # UI FIX: Center and maximize window after creation
+        self.after(100, lambda: center_and_maximize(self))
         
         # Create UI
         self.create_widgets()
@@ -102,6 +103,7 @@ class StudentRegistrationForm(ctk.CTkToplevel):
             height=80
         )
         header_frame.pack(fill="x", padx=20, pady=(20, 10))
+        header_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         # Title - Change based on mode
         title_text = "Edit Student" if self.is_edit_mode else "Student Registration Form"
@@ -133,6 +135,7 @@ class StudentRegistrationForm(ctk.CTkToplevel):
             height=50
         )
         section_frame.pack(fill="x", padx=10, pady=(15, 10))
+        section_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         # Section title
         section_label = ctk.CTkLabel(

@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from app.database.models import SessionLocal, FeeChallan, Student, Guardian, FeeStatus, PaymentMethod, FeeRecord
 from app.services.fee_service import FeeService
 from app.utils.id_generator import IDGenerator
+from app.utils.center_window import center_and_maximize  # UI FIX
 
 
 class FeeCollectionScreen(ctk.CTkToplevel):
@@ -31,6 +32,9 @@ class FeeCollectionScreen(ctk.CTkToplevel):
         
         self.current_challan = None
         
+        # UI FIX: Center and maximize window after creation
+        self.after(100, lambda: center_and_maximize(self))
+        
         # Create UI
         self.create_widgets()
         
@@ -47,7 +51,7 @@ class FeeCollectionScreen(ctk.CTkToplevel):
         # ===== HEADER (Orange Background) =====
         header_frame = ctk.CTkFrame(main_frame, fg_color="#e67e22", corner_radius=0, height=60)
         header_frame.pack(fill="x")
-        header_frame.pack_propagate(False)
+        header_frame.pack_propagate(False)  # UI FIX: keep height consistent
         
         header_title = ctk.CTkLabel(
             header_frame,

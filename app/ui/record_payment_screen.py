@@ -39,7 +39,7 @@ class RecordPaymentScreen(ctk.CTkFrame):
         # Header
         header_frame = ctk.CTkFrame(self, fg_color="white", corner_radius=0, height=80)
         header_frame.grid(row=0, column=0, sticky="ew")
-        header_frame.grid_propagate(False)
+        header_frame.grid_propagate(False)  # UI FIX: keep height consistent
         
         title = ctk.CTkLabel(
             header_frame,
