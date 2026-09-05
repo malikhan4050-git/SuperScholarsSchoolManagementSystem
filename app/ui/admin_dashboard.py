@@ -67,7 +67,7 @@ class AdminDashboard(ctk.CTk):
         
         self.sidebar = ctk.CTkFrame(
             self,
-            width=250,
+            width=220,
             corner_radius=0,
             fg_color="#1e3a5f"
         )
@@ -78,35 +78,35 @@ class AdminDashboard(ctk.CTk):
         self.logo_label = ctk.CTkLabel(
             self.sidebar,
             text="SUPER\nSCHOLARS",
-            font=("Arial", 20, "bold"),
+            font=("Arial", 18, "bold"),
             text_color="white",
             justify="center"
         )
-        self.logo_label.pack(pady=(30, 40))
+        self.logo_label.pack(pady=(25, 30))
         
         # User info frame
         self.user_frame = ctk.CTkFrame(
             self.sidebar,
             fg_color="#2c5282",
-            corner_radius=10
+            corner_radius=8
         )
-        self.user_frame.pack(padx=20, pady=(0, 30), fill="x")
+        self.user_frame.pack(padx=15, pady=(0, 20), fill="x")
         
         self.user_name = ctk.CTkLabel(
             self.user_frame,
             text=f"{self.current_user.full_name}",
-            font=("Arial", 14, "bold"),
+            font=("Arial", 13, "bold"),
             text_color="white"
         )
-        self.user_name.pack(pady=10)
+        self.user_name.pack(pady=8)
         
         self.user_role = ctk.CTkLabel(
             self.user_frame,
             text="Admin",
-            font=("Arial", 12),
+            font=("Arial", 11),
             text_color="#a0b4c8"
         )
-        self.user_role.pack(pady=(0, 10))
+        self.user_role.pack(pady=(0, 8))
         
         # Navigation buttons
         nav_items = [
@@ -123,28 +123,28 @@ class AdminDashboard(ctk.CTk):
             button = ctk.CTkButton(
                 self.sidebar,
                 text=text,
-                width=200,
-                height=40,
-                font=("Arial", 14),
+                width=180,
+                height=38,
+                font=("Arial", 13),
                 fg_color="transparent",
                 hover_color="#2c5282",
                 anchor="w",
                 command=command
             )
-            button.pack(padx=20, pady=5)
+            button.pack(padx=15, pady=3)
         
         # Logout button
         self.logout_button = ctk.CTkButton(
             self.sidebar,
             text="Logout",
-            width=200,
-            height=40,
-            font=("Arial", 14),
+            width=180,
+            height=38,
+            font=("Arial", 13),
             fg_color="#e74c3c",
             hover_color="#c0392b",
             command=self.logout
         )
-        self.logout_button.pack(side="bottom", padx=20, pady=20)
+        self.logout_button.pack(side="bottom", padx=15, pady=15)
         
     def create_main_content(self):
         """Create main content area"""
@@ -168,7 +168,6 @@ class AdminDashboard(ctk.CTk):
         """Show dashboard view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=70,
@@ -186,22 +185,18 @@ class AdminDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=25, pady=20)
         
-        # Stats Container - Single Row with Professional Cards
         self.create_stats_cards()
     
     def create_stats_cards(self):
         """Create professional stats cards in a single row"""
         
-        # Get actual stats
         total_students = self.db.query(Student).count()
         total_fees_pending = self.db.query(FeeRecord).filter(
             FeeRecord.status == FeeStatus.PENDING
         ).count()
         
-        # Fee summary
         fee_summary = self.fee_service.get_fee_summary()
         
-        # Stats data - (title, value, icon_color, bg_color, accent_color)
         stats = [
             {
                 "title": "Total Students",
@@ -237,25 +232,21 @@ class AdminDashboard(ctk.CTk):
             }
         ]
         
-        # Container for cards
         stats_container = ctk.CTkFrame(
             self.main_content,
             fg_color="transparent"
         )
         stats_container.pack(fill="x", padx=25, pady=20)
         
-        # Configure grid - 4 columns, all equal weight
         for i in range(4):
             stats_container.grid_columnconfigure(i, weight=1)
         
-        # Create each card
         for i, stat in enumerate(stats):
             self.create_stat_card(stats_container, stat, i)
     
     def create_stat_card(self, parent, stat, column):
         """Create a single professional stat card"""
         
-        # Card frame with border
         card = ctk.CTkFrame(
             parent,
             fg_color="white",
@@ -267,7 +258,6 @@ class AdminDashboard(ctk.CTk):
         card.grid(row=0, column=column, padx=8, pady=8, sticky="nsew")
         card.grid_propagate(False)
         
-        # Icon circle (colored background with text)
         icon_frame = ctk.CTkFrame(
             card,
             width=45,
@@ -286,7 +276,6 @@ class AdminDashboard(ctk.CTk):
         )
         icon_label.pack(expand=True)
         
-        # Value
         value_label = ctk.CTkLabel(
             card,
             text=stat["value"],
@@ -295,7 +284,6 @@ class AdminDashboard(ctk.CTk):
         )
         value_label.pack(pady=(2, 1))
         
-        # Title
         title_label = ctk.CTkLabel(
             card,
             text=stat["title"],
@@ -305,13 +293,13 @@ class AdminDashboard(ctk.CTk):
         title_label.pack(pady=(0, 8))
     
     def show_students(self):
-        """Show student management view"""
+        """Show student management view - Professional Table"""
         self.clear_main_content()
         
-        # Header
+        # ===== HEADER SECTION =====
         self.header_frame = ctk.CTkFrame(
             self.main_content,
-            height=100,
+            height=65,
             fg_color="white",
             corner_radius=0
         )
@@ -321,62 +309,320 @@ class AdminDashboard(ctk.CTk):
         self.header_title = ctk.CTkLabel(
             self.header_frame,
             text="Student Management",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 20, "bold"),
             text_color="#1e3a5f"
         )
-        self.header_title.pack(side="left", padx=30, pady=30)
+        self.header_title.pack(side="left", padx=20, pady=18)
         
         # Add Student Button
         self.add_student_btn = ctk.CTkButton(
             self.header_frame,
             text="+ Add Student",
-            width=150,
-            height=40,
-            font=("Arial", 14, "bold"),
-            fg_color="#2ecc71",
-            hover_color="#27ae60",
+            width=120,
+            height=35,
+            font=("Arial", 12, "bold"),
+            fg_color="#27ae60",
+            hover_color="#229954",
+            corner_radius=6,
             command=self.show_add_student_form
         )
-        self.add_student_btn.pack(side="right", padx=30, pady=20)
+        self.add_student_btn.pack(side="right", padx=20, pady=15)
         
-        # Search Frame
+        # ===== SEARCH BAR SECTION =====
         self.search_frame = ctk.CTkFrame(
             self.main_content,
-            fg_color="white",
-            corner_radius=10
+            fg_color="transparent",
+            height=48
         )
-        self.search_frame.pack(fill="x", padx=30, pady=20)
+        self.search_frame.pack(fill="x", padx=20, pady=(10, 5))
+        self.search_frame.pack_propagate(False)
         
         self.search_entry = ctk.CTkEntry(
             self.search_frame,
-            width=300,
+            placeholder_text="Search by student name, ID, or family ID...",
+            font=("Arial", 12),
             height=35,
-            placeholder_text="Search by name or ID...",
-            font=("Arial", 13)
+            border_color="#d5d8dc",
+            fg_color="white",
+            corner_radius=6
         )
-        self.search_entry.pack(side="left", padx=20, pady=10)
+        self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        self.search_entry.bind("<Return>", lambda e: self.search_students())
         
         self.search_btn = ctk.CTkButton(
             self.search_frame,
             text="Search",
-            width=100,
-            height=35,
+            font=("Arial", 11, "bold"),
             fg_color="#3498db",
             hover_color="#2980b9",
+            width=80,
+            height=35,
+            corner_radius=6,
             command=self.search_students
         )
-        self.search_btn.pack(side="left", padx=10, pady=10)
+        self.search_btn.pack(side="left", padx=(0, 8))
         
-        # Students list frame
+        self.clear_btn = ctk.CTkButton(
+            self.search_frame,
+            text="Clear",
+            font=("Arial", 11, "bold"),
+            fg_color="#95a5a6",
+            hover_color="#7f8c8d",
+            width=65,
+            height=35,
+            corner_radius=6,
+            command=self.clear_search
+        )
+        self.clear_btn.pack(side="left")
+        
+        # ===== TABLE SECTION =====
         self.students_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="white",
-            corner_radius=10
+            corner_radius=8,
+            border_width=1,
+            border_color="#e0e0e0"
         )
-        self.students_frame.pack(fill="both", expand=True, padx=30, pady=20)
+        self.students_frame.pack(fill="both", expand=True, padx=20, pady=(8, 15))
         
         # Refresh students list
         self.refresh_students_list()
+    
+    def refresh_students_list(self, students=None):
+        """Refresh the students list - Proper Table Layout (No Scrollbar)"""
+        
+        # Clear existing content
+        for widget in self.students_frame.winfo_children():
+            widget.destroy()
+        
+        # Get students
+        if students is None:
+            students = self.student_service.get_all_students()
+        
+        if not students:
+            empty_frame = ctk.CTkFrame(self.students_frame, fg_color="transparent")
+            empty_frame.pack(fill="both", expand=True)
+            
+            empty_icon = ctk.CTkLabel(
+                empty_frame,
+                text="",
+                font=("Arial", 40),
+                text_color="#bdc3c7"
+            )
+            empty_icon.pack(pady=(50, 10))
+            
+            empty_label = ctk.CTkLabel(
+                empty_frame,
+                text="No students found",
+                font=("Arial", 16, "bold"),
+                text_color="#7f8c8d"
+            )
+            empty_label.pack()
+            
+            empty_sub = ctk.CTkLabel(
+                empty_frame,
+                text="Click '+ Add Student' to create a new student record",
+                font=("Arial", 12),
+                text_color="#95a5a6"
+            )
+            empty_sub.pack(pady=(5, 0))
+            
+            return
+        
+        # ===== TABLE HEADER =====
+        self.col_widths = [
+            40,    # #
+            110,   # Student ID
+            170,   # Student Name
+            120,   # Family ID
+            90,    # Class
+            70,    # Section
+            100,   # Monthly Fee
+            100,   # Concession
+            80,    # Status
+            190    # Actions
+        ]
+        
+        self.headers = [
+            "#", "Student ID", "Student Name", "Family ID", 
+            "Class", "Section", "Monthly Fee", "Concession", 
+            "Status", "Actions"
+        ]
+        
+        # Header row
+        header_row = ctk.CTkFrame(
+            self.students_frame,
+            fg_color="#1e3a5f",
+            height=40,
+            corner_radius=0
+        )
+        header_row.pack(fill="x")
+        header_row.pack_propagate(False)
+        
+        for i, (header_text, width) in enumerate(zip(self.headers, self.col_widths)):
+            cell_frame = ctk.CTkFrame(
+                header_row,
+                fg_color="#1e3a5f",
+                width=width,
+                height=40,
+                corner_radius=0
+            )
+            cell_frame.pack(side="left", padx=0, pady=0)
+            cell_frame.pack_propagate(False)
+            
+            align = "center" if i in [0, 5, 8, 9] else "w"
+            if i in [6, 7]:
+                align = "e"
+            
+            header_label = ctk.CTkLabel(
+                cell_frame,
+                text=header_text,
+                font=("Arial", 11, "bold"),
+                text_color="white",
+                anchor=align,
+                padx=8
+            )
+            header_label.pack(fill="both", expand=True)
+        
+        separator = ctk.CTkFrame(self.students_frame, fg_color="#e0e0e0", height=1)
+        separator.pack(fill="x")
+        
+        # ===== TABLE BODY (NO SCROLLBAR) =====
+        self.table_body = ctk.CTkFrame(
+            self.students_frame,
+            fg_color="white",
+            corner_radius=0
+        )
+        self.table_body.pack(fill="both", expand=True)
+        
+        for idx, student in enumerate(students):
+            self.create_student_row(student, idx)
+    
+    def create_student_row(self, student, idx):
+        """Create a single student row - Spreadsheet Style"""
+        
+        guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
+        family_id = guardian.family_id if guardian else "N/A"
+        
+        row_bg = "#ffffff" if idx % 2 == 0 else "#f8f9fa"
+        
+        row_frame = ctk.CTkFrame(
+            self.table_body,
+            fg_color=row_bg,
+            height=50
+        )
+        row_frame.pack(fill="x", pady=0)
+        row_frame.pack_propagate(False)
+        
+        row_values = [
+            str(idx + 1),
+            student.student_id,
+            f"{student.first_name} {student.last_name}",
+            family_id,
+            student.class_grade,
+            student.section or "-",
+            f"Rs. {student.monthly_tuition_fee:,.0f}",
+            f"Rs. {student.fee_concession:,.0f}",
+            "Active" if student.academic_status.value == "active" else "Inactive"
+        ]
+        
+        for i, (value, width) in enumerate(zip(row_values, self.col_widths)):
+            cell_frame = ctk.CTkFrame(
+                row_frame,
+                fg_color=row_bg,
+                width=width,
+                height=50,
+                corner_radius=0
+            )
+            cell_frame.pack(side="left", padx=0, pady=0)
+            cell_frame.pack_propagate(False)
+            
+            align = "center" if i in [0, 5, 8] else "w"
+            if i in [6, 7]:
+                align = "e"
+            
+            text_color = "#2c3e50"
+            font_weight = "normal"
+            
+            if i == 1:
+                text_color = "#3498db"
+                font_weight = "bold"
+            elif i == 2:
+                font_weight = "bold"
+            elif i == 6:
+                text_color = "#27ae60"
+                font_weight = "bold"
+            elif i == 7:
+                text_color = "#8e44ad"
+                font_weight = "bold"
+            elif i == 8:
+                if value == "Active":
+                    text_color = "#27ae60"
+                else:
+                    text_color = "#e74c3c"
+                font_weight = "bold"
+            
+            cell_label = ctk.CTkLabel(
+                cell_frame,
+                text=value,
+                font=("Arial", 11, font_weight),
+                text_color=text_color,
+                anchor=align,
+                justify="left" if align == "w" else "center",
+                wraplength=width - 10,
+                padx=8
+            )
+            cell_label.pack(fill="both", expand=True, padx=2, pady=2)
+        
+        # ===== ACTIONS COLUMN =====
+        action_frame = ctk.CTkFrame(
+            row_frame,
+            fg_color=row_bg,
+            width=self.col_widths[9],
+            height=50,
+            corner_radius=0
+        )
+        action_frame.pack(side="left", padx=0, pady=0)
+        action_frame.pack_propagate(False)
+        
+        view_btn = ctk.CTkButton(
+            action_frame,
+            text="View",
+            width=45,
+            height=26,
+            font=("Arial", 10, "bold"),
+            fg_color="#3498db",
+            hover_color="#2980b9",
+            corner_radius=4,
+            command=lambda sid=student.id: self.view_student(sid)
+        )
+        view_btn.pack(side="left", padx=(5, 2), pady=12)
+        
+        edit_btn = ctk.CTkButton(
+            action_frame,
+            text="Edit",
+            width=45,
+            height=26,
+            font=("Arial", 10, "bold"),
+            fg_color="#f39c12",
+            hover_color="#e67e22",
+            corner_radius=4,
+            command=lambda sid=student.id: self.edit_student(sid)
+        )
+        edit_btn.pack(side="left", padx=2, pady=12)
+        
+        delete_btn = ctk.CTkButton(
+            action_frame,
+            text="Del",
+            width=40,
+            height=26,
+            font=("Arial", 10, "bold"),
+            fg_color="#e74c3c",
+            hover_color="#c0392b",
+            corner_radius=4,
+            command=lambda sid=student.id: self.delete_student(sid)
+        )
+        delete_btn.pack(side="left", padx=2, pady=12)
     
     def show_promotion(self):
         """Show student promotion screen"""
@@ -429,92 +675,6 @@ class AdminDashboard(ctk.CTk):
         else:
             messagebox.showerror("Error", "Student not found!")
     
-    def refresh_students_list(self, students=None):
-        """Refresh the students list"""
-        for widget in self.students_frame.winfo_children():
-            widget.destroy()
-        
-        list_title = ctk.CTkLabel(
-            self.students_frame,
-            text="All Students",
-            font=("Arial", 18, "bold"),
-            text_color="#1e3a5f"
-        )
-        list_title.pack(pady=10)
-        
-        if students is None:
-            students = self.student_service.get_all_students()
-        
-        if not students:
-            empty_label = ctk.CTkLabel(
-                self.students_frame,
-                text="No students found. Click 'Add Student' to create one.",
-                font=("Arial", 14),
-                text_color="gray"
-            )
-            empty_label.pack(pady=50)
-            return
-        
-        scroll_frame = ctk.CTkScrollableFrame(
-            self.students_frame,
-            fg_color="transparent"
-        )
-        scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        for student in students:
-            student_card = ctk.CTkFrame(
-                scroll_frame,
-                fg_color="#f8f9fa",
-                corner_radius=8
-            )
-            student_card.pack(fill="x", padx=10, pady=5)
-            
-            guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
-            family_id = guardian.family_id if guardian else "N/A"
-            
-            info_text = f"{student.full_name} | ID: {student.student_id} | Family: {family_id} | Class: {student.class_grade}"
-            
-            student_label = ctk.CTkLabel(
-                student_card,
-                text=info_text,
-                font=("Arial", 13),
-                text_color="#2c3e50"
-            )
-            student_label.pack(side="left", padx=15, pady=10)
-            
-            view_btn = ctk.CTkButton(
-                student_card,
-                text="View",
-                width=80,
-                height=30,
-                fg_color="#3498db",
-                hover_color="#2980b9",
-                command=lambda sid=student.id: self.view_student(sid)
-            )
-            view_btn.pack(side="right", padx=5, pady=5)
-            
-            edit_btn = ctk.CTkButton(
-                student_card,
-                text="Edit",
-                width=80,
-                height=30,
-                fg_color="#f39c12",
-                hover_color="#e67e22",
-                command=lambda sid=student.id: self.edit_student(sid)
-            )
-            edit_btn.pack(side="right", padx=5, pady=5)
-            
-            delete_btn = ctk.CTkButton(
-                student_card,
-                text="Delete",
-                width=80,
-                height=30,
-                fg_color="#e74c3c",
-                hover_color="#c0392b",
-                command=lambda sid=student.id: self.delete_student(sid)
-            )
-            delete_btn.pack(side="right", padx=5, pady=5)
-    
     def search_students(self):
         """Search for students"""
         search_term = self.search_entry.get().strip()
@@ -523,6 +683,11 @@ class AdminDashboard(ctk.CTk):
             self.refresh_students_list(results)
         else:
             self.refresh_students_list()
+    
+    def clear_search(self):
+        """Clear search and show all students"""
+        self.search_entry.delete(0, "end")
+        self.refresh_students_list()
     
     def view_student(self, student_id):
         """View student details"""
@@ -536,8 +701,10 @@ class AdminDashboard(ctk.CTk):
                 f"ID: {student.student_id}\n"
                 f"Family ID: {family_id}\n"
                 f"Class: {student.class_grade}\n"
+                f"Section: {student.section}\n"
                 f"Monthly Fee: Rs. {student.monthly_tuition_fee:,.0f}\n"
-                f"Concession: Rs. {student.fee_concession:,.0f}")
+                f"Concession: Rs. {student.fee_concession:,.0f}\n"
+                f"Status: {student.academic_status.value}")
     
     def delete_student(self, student_id):
         """Delete a student"""
