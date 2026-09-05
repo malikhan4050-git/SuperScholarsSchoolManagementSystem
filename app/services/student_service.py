@@ -251,7 +251,7 @@ class StudentService:
     
     def get_next_class(self, class_grade: str) -> str:
         """
-        Get the next class for promotion
+        Get the next class for promotion - Returns just the number (e.g., "8")
         """
         # Clean the class_grade - extract only numbers
         import re
@@ -260,8 +260,8 @@ class StudentService:
         if class_num:
             try:
                 next_class_num = int(class_num) + 1
-                # Return as "Class X" format
-                return f"Class {next_class_num}"
+                # Return as just the number (e.g., "8")
+                return str(next_class_num)
             except:
                 return class_grade
         else:
