@@ -17,8 +17,8 @@ from app.services.student_service import StudentService
 from app.services.fee_service import FeeService
 from app.ui.student_form import StudentRegistrationForm
 from app.ui.fee_challan_screen import FeeChallanlScreen
-from app.ui.promotion_screen import PromotionScreen  # Add this import
-from app.utils.center_window import center_and_maximize  # UI FIX
+from app.ui.promotion_screen import PromotionScreen
+from app.utils.center_window import center_and_maximize
 
 class AdminDashboard(ctk.CTk):
     """Admin Dashboard Class"""
@@ -36,7 +36,7 @@ class AdminDashboard(ctk.CTk):
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         
-        # UI FIX: Center and maximize window after creation
+        # Center and maximize window after creation
         self.after(100, lambda: center_and_maximize(self))
         
         # Initialize database
@@ -72,7 +72,7 @@ class AdminDashboard(ctk.CTk):
             fg_color="#1e3a5f"
         )
         self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_propagate(False)  # UI FIX: Keep fixed width
+        self.sidebar.grid_propagate(False)
         
         # Logo
         self.logo_label = ctk.CTkLabel(
@@ -112,7 +112,7 @@ class AdminDashboard(ctk.CTk):
         nav_items = [
             ("Dashboard", self.show_dashboard),
             ("Students", self.show_students),
-            ("Promote Students", self.show_promotion),  # Add this
+            ("Promote Students", self.show_promotion),
             ("Fee Management", self.show_fees),
             ("Record Payment", self.show_payments),
             ("Reports", self.show_reports),
@@ -171,27 +171,26 @@ class AdminDashboard(ctk.CTk):
         # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
-            height=100,
+            height=70,
             fg_color="white",
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX: keep height consistent
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
             text="Dashboard Overview",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 22, "bold"),
             text_color="#1e3a5f"
         )
-        self.header_title.pack(side="left", padx=30, pady=30)
+        self.header_title.pack(side="left", padx=25, pady=20)
         
-        # Stats cards
-        self.stats_frame = ctk.CTkFrame(
-            self.main_content,
-            fg_color="transparent"
-        )
-        self.stats_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        # Stats Container - Single Row with Professional Cards
+        self.create_stats_cards()
+    
+    def create_stats_cards(self):
+        """Create professional stats cards in a single row"""
         
         # Get actual stats
         total_students = self.db.query(Student).count()
@@ -202,38 +201,108 @@ class AdminDashboard(ctk.CTk):
         # Fee summary
         fee_summary = self.fee_service.get_fee_summary()
         
+        # Stats data - (title, value, icon_color, bg_color, accent_color)
         stats = [
-            ("Total Students", total_students, "#3498db"),
-            ("Pending Fees", total_fees_pending, "#e74c3c"),
-            ("Total Collected", f"Rs. {fee_summary['total_collected']:,.0f}", "#2ecc71"),
-            ("Outstanding", f"Rs. {fee_summary['total_outstanding']:,.0f}", "#f39c12")
+            {
+                "title": "Total Students",
+                "value": str(total_students),
+                "icon": "STU",
+                "color": "#3498db",
+                "bg": "#ebf5fb",
+                "border": "#3498db"
+            },
+            {
+                "title": "Pending Fees",
+                "value": str(total_fees_pending),
+                "icon": "PEN",
+                "color": "#e74c3c",
+                "bg": "#fdedec",
+                "border": "#e74c3c"
+            },
+            {
+                "title": "Total Collected",
+                "value": f"Rs. {fee_summary['total_collected']:,.0f}",
+                "icon": "COL",
+                "color": "#27ae60",
+                "bg": "#e8f8f5",
+                "border": "#27ae60"
+            },
+            {
+                "title": "Outstanding",
+                "value": f"Rs. {fee_summary['total_outstanding']:,.0f}",
+                "icon": "OUT",
+                "color": "#f39c12",
+                "bg": "#fef5e7",
+                "border": "#f39c12"
+            }
         ]
         
-        for i, (title, value, color) in enumerate(stats):
-            card = ctk.CTkFrame(
-                self.stats_frame,
-                width=220,
-                height=150,
-                fg_color="white",
-                corner_radius=15
-            )
-            card.grid(row=0, column=i, padx=15, pady=10)
-            
-            value_label = ctk.CTkLabel(
-                card,
-                text=str(value),
-                font=("Arial", 28, "bold"),
-                text_color=color
-            )
-            value_label.pack(pady=(30, 5))
-            
-            title_label = ctk.CTkLabel(
-                card,
-                text=title,
-                font=("Arial", 14),
-                text_color="gray"
-            )
-            title_label.pack(pady=(0, 30))
+        # Container for cards
+        stats_container = ctk.CTkFrame(
+            self.main_content,
+            fg_color="transparent"
+        )
+        stats_container.pack(fill="x", padx=25, pady=20)
+        
+        # Configure grid - 4 columns, all equal weight
+        for i in range(4):
+            stats_container.grid_columnconfigure(i, weight=1)
+        
+        # Create each card
+        for i, stat in enumerate(stats):
+            self.create_stat_card(stats_container, stat, i)
+    
+    def create_stat_card(self, parent, stat, column):
+        """Create a single professional stat card"""
+        
+        # Card frame with border
+        card = ctk.CTkFrame(
+            parent,
+            fg_color="white",
+            corner_radius=12,
+            border_width=2,
+            border_color=stat["border"],
+            height=110
+        )
+        card.grid(row=0, column=column, padx=8, pady=8, sticky="nsew")
+        card.grid_propagate(False)
+        
+        # Icon circle (colored background with text)
+        icon_frame = ctk.CTkFrame(
+            card,
+            width=45,
+            height=45,
+            corner_radius=22,
+            fg_color=stat["bg"]
+        )
+        icon_frame.pack(pady=(10, 3))
+        icon_frame.pack_propagate(False)
+        
+        icon_label = ctk.CTkLabel(
+            icon_frame,
+            text=stat["icon"],
+            font=("Arial", 12, "bold"),
+            text_color=stat["color"]
+        )
+        icon_label.pack(expand=True)
+        
+        # Value
+        value_label = ctk.CTkLabel(
+            card,
+            text=stat["value"],
+            font=("Arial", 20, "bold"),
+            text_color=stat["color"]
+        )
+        value_label.pack(pady=(2, 1))
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            card,
+            text=stat["title"],
+            font=("Arial", 11),
+            text_color="#7f8c8d"
+        )
+        title_label.pack(pady=(0, 8))
     
     def show_students(self):
         """Show student management view"""
@@ -247,7 +316,7 @@ class AdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX: keep height consistent
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -257,7 +326,7 @@ class AdminDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Add Student Button (now opens new form)
+        # Add Student Button
         self.add_student_btn = ctk.CTkButton(
             self.header_frame,
             text="+ Add Student",
@@ -314,13 +383,11 @@ class AdminDashboard(ctk.CTk):
         self.clear_main_content()
         
         try:
-            # Create and display the promotion screen
             self.promotion_screen = PromotionScreen(self.main_content, self.db, self.student_service)
             self.promotion_screen.pack(fill="both", expand=True)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load Promotion screen: {str(e)}")
             
-            # Fallback placeholder
             self.header_frame = ctk.CTkFrame(
                 self.main_content,
                 height=100,
@@ -328,7 +395,7 @@ class AdminDashboard(ctk.CTk):
                 corner_radius=0
             )
             self.header_frame.pack(fill="x")
-            self.header_frame.pack_propagate(False)  # UI FIX
+            self.header_frame.pack_propagate(False)
             
             self.header_title = ctk.CTkLabel(
                 self.header_frame,
@@ -353,10 +420,9 @@ class AdminDashboard(ctk.CTk):
         self.refresh_students_list()
     
     def edit_student(self, student_id):
-        """Edit student details - Opens the edit form with pre-filled data"""
+        """Edit student details"""
         student = self.student_service.get_student_by_id(student_id)
         if student:
-            # Open the registration form in edit mode
             form = StudentRegistrationForm(self, self.student_service, student=student)
             self.wait_window(form)
             self.refresh_students_list()
@@ -368,7 +434,6 @@ class AdminDashboard(ctk.CTk):
         for widget in self.students_frame.winfo_children():
             widget.destroy()
         
-        # Title
         list_title = ctk.CTkLabel(
             self.students_frame,
             text="All Students",
@@ -377,7 +442,6 @@ class AdminDashboard(ctk.CTk):
         )
         list_title.pack(pady=10)
         
-        # Get students
         if students is None:
             students = self.student_service.get_all_students()
         
@@ -391,14 +455,12 @@ class AdminDashboard(ctk.CTk):
             empty_label.pack(pady=50)
             return
         
-        # Create scrollable frame for students
         scroll_frame = ctk.CTkScrollableFrame(
             self.students_frame,
             fg_color="transparent"
         )
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Student cards
         for student in students:
             student_card = ctk.CTkFrame(
                 scroll_frame,
@@ -407,11 +469,9 @@ class AdminDashboard(ctk.CTk):
             )
             student_card.pack(fill="x", padx=10, pady=5)
             
-            # Get guardian for this student
             guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
             family_id = guardian.family_id if guardian else "N/A"
             
-            # Student info with family ID
             info_text = f"{student.full_name} | ID: {student.student_id} | Family: {family_id} | Class: {student.class_grade}"
             
             student_label = ctk.CTkLabel(
@@ -422,7 +482,6 @@ class AdminDashboard(ctk.CTk):
             )
             student_label.pack(side="left", padx=15, pady=10)
             
-            # View button
             view_btn = ctk.CTkButton(
                 student_card,
                 text="View",
@@ -434,7 +493,6 @@ class AdminDashboard(ctk.CTk):
             )
             view_btn.pack(side="right", padx=5, pady=5)
             
-            # Edit button
             edit_btn = ctk.CTkButton(
                 student_card,
                 text="Edit",
@@ -446,7 +504,6 @@ class AdminDashboard(ctk.CTk):
             )
             edit_btn.pack(side="right", padx=5, pady=5)
             
-            # Delete button
             delete_btn = ctk.CTkButton(
                 student_card,
                 text="Delete",
@@ -469,7 +526,6 @@ class AdminDashboard(ctk.CTk):
     
     def view_student(self, student_id):
         """View student details"""
-        # Simplified for now - will implement full view later
         student = self.student_service.get_student_by_id(student_id)
         if student:
             guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
@@ -497,15 +553,12 @@ class AdminDashboard(ctk.CTk):
         """Show fee management view"""
         self.clear_main_content()
         
-        # Create and display the Fee Challan Screen
         try:
             self.fee_challan_screen = FeeChallanlScreen(self.main_content, self.db)
             self.fee_challan_screen.pack(fill="both", expand=True)
         except Exception as e:
-            # Fallback to placeholder if there's an error
             messagebox.showerror("Error", f"Failed to load Fee Challan screen: {str(e)}")
             
-            # Header
             self.header_frame = ctk.CTkFrame(
                 self.main_content,
                 height=100,
@@ -513,7 +566,7 @@ class AdminDashboard(ctk.CTk):
                 corner_radius=0
             )
             self.header_frame.pack(fill="x")
-            self.header_frame.pack_propagate(False)  # UI FIX
+            self.header_frame.pack_propagate(False)
             
             self.header_title = ctk.CTkLabel(
                 self.header_frame,
@@ -523,7 +576,6 @@ class AdminDashboard(ctk.CTk):
             )
             self.header_title.pack(side="left", padx=30, pady=30)
             
-            # Add placeholder content
             placeholder = ctk.CTkLabel(
                 self.main_content,
                 text="Fee Management features coming soon...",
@@ -544,7 +596,6 @@ class AdminDashboard(ctk.CTk):
         """Show reports view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=100,
@@ -552,7 +603,7 @@ class AdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -562,7 +613,6 @@ class AdminDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Add placeholder content
         placeholder = ctk.CTkLabel(
             self.main_content,
             text="Reports features coming soon...",
@@ -575,7 +625,6 @@ class AdminDashboard(ctk.CTk):
         """Show settings view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=100,
@@ -583,7 +632,7 @@ class AdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -593,7 +642,6 @@ class AdminDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Add placeholder content
         placeholder = ctk.CTkLabel(
             self.main_content,
             text="Settings features coming soon...",
@@ -609,13 +657,11 @@ class AdminDashboard(ctk.CTk):
             self.db.close()
             self.destroy()
             
-            # Import and show login window
             from app.ui.login_window import LoginWindow
             login_window = LoginWindow()
             login_window.mainloop()
 
 if __name__ == "__main__":
-    # Test with a dummy user
     from app.database.models import SessionLocal, User, UserRole
     db = SessionLocal()
     user = db.query(User).filter(User.role == UserRole.ADMIN).first()

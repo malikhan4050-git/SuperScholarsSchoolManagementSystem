@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from app.database.models import SessionLocal, Guardian, Student, FeeRecord, FeeStatus, Teacher
 from app.utils.auth import Authentication
 from app.services.fee_service import FeeService
-from app.utils.center_window import center_and_maximize  # UI FIX
+from app.utils.center_window import center_and_maximize
 
 class PrincipalDashboard(ctk.CTk):
     """Principal Dashboard Class"""
@@ -21,39 +21,29 @@ class PrincipalDashboard(ctk.CTk):
     def __init__(self, user):
         super().__init__()
         
-        # Store current user
         self.current_user = user
         
-        # Configure window
         self.title("Super Scholars - Principal Dashboard")
         
-        # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         
-        # UI FIX: Center and maximize window after creation
         self.after(100, lambda: center_and_maximize(self))
         
-        # Initialize database
         self.db = SessionLocal()
         self.auth = Authentication(self.db)
         self.auth.current_user = user
         self.fee_service = FeeService(self.db)
         
-        # Create UI
         self.create_widgets()
         
     def create_widgets(self):
         """Create main dashboard layout"""
         
-        # Configure grid
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         
-        # Create sidebar
         self.create_sidebar()
-        
-        # Create main content area
         self.create_main_content()
         
     def create_sidebar(self):
@@ -66,9 +56,8 @@ class PrincipalDashboard(ctk.CTk):
             fg_color="#1e3a5f"
         )
         self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_propagate(False)  # UI FIX: Keep fixed width
+        self.sidebar.grid_propagate(False)
         
-        # Logo
         self.logo_label = ctk.CTkLabel(
             self.sidebar,
             text="SUPER\nSCHOLARS",
@@ -78,7 +67,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.logo_label.pack(pady=(30, 40))
         
-        # User info frame
         self.user_frame = ctk.CTkFrame(
             self.sidebar,
             fg_color="#2c5282",
@@ -102,7 +90,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.user_role.pack(pady=(0, 10))
         
-        # Navigation buttons
         nav_items = [
             ("Dashboard", self.show_dashboard),
             ("Students", self.show_students),
@@ -126,7 +113,6 @@ class PrincipalDashboard(ctk.CTk):
             )
             button.pack(padx=20, pady=5)
         
-        # Logout button
         self.logout_button = ctk.CTkButton(
             self.sidebar,
             text="Logout",
@@ -149,7 +135,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.main_content.grid(row=0, column=1, sticky="nsew")
         
-        # Initialize with dashboard
         self.show_dashboard()
         
     def clear_main_content(self):
@@ -161,77 +146,133 @@ class PrincipalDashboard(ctk.CTk):
         """Show dashboard view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
-            height=100,
+            height=70,
             fg_color="white",
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX: keep height consistent
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
             text="Dashboard Overview",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 22, "bold"),
             text_color="#1e3a5f"
         )
-        self.header_title.pack(side="left", padx=30, pady=30)
+        self.header_title.pack(side="left", padx=25, pady=20)
         
-        # Stats cards
-        self.stats_frame = ctk.CTkFrame(
-            self.main_content,
-            fg_color="transparent"
-        )
-        self.stats_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        self.create_stats_cards()
+    
+    def create_stats_cards(self):
+        """Create professional stats cards in a single row"""
         
-        # Get actual stats
         total_students = self.db.query(Student).count()
         total_teachers = self.db.query(Teacher).count()
         total_families = self.db.query(Guardian).count()
         
-        # Fee summary
         fee_summary = self.fee_service.get_fee_summary()
         
         stats = [
-            ("Total Students", total_students, "#3498db"),
-            ("Total Teachers", total_teachers, "#2ecc71"),
-            ("Total Families", total_families, "#e74c3c"),
-            ("Collected", f"Rs. {fee_summary['total_collected']:,.0f}", "#f39c12")
+            {
+                "title": "Total Students",
+                "value": str(total_students),
+                "icon": "🎓",
+                "color": "#3498db",
+                "bg": "#ebf5fb",
+                "border": "#3498db"
+            },
+            {
+                "title": "Total Teachers",
+                "value": str(total_teachers),
+                "icon": "👨‍🏫",
+                "color": "#27ae60",
+                "bg": "#e8f8f5",
+                "border": "#27ae60"
+            },
+            {
+                "title": "Total Families",
+                "value": str(total_families),
+                "icon": "🏠",
+                "color": "#e74c3c",
+                "bg": "#fdedec",
+                "border": "#e74c3c"
+            },
+            {
+                "title": "Collected",
+                "value": f"Rs. {fee_summary['total_collected']:,.0f}",
+                "icon": "💰",
+                "color": "#f39c12",
+                "bg": "#fef5e7",
+                "border": "#f39c12"
+            }
         ]
         
-        for i, (title, value, color) in enumerate(stats):
-            card = ctk.CTkFrame(
-                self.stats_frame,
-                width=220,
-                height=150,
-                fg_color="white",
-                corner_radius=15
-            )
-            card.grid(row=0, column=i, padx=15, pady=10)
-            
-            value_label = ctk.CTkLabel(
-                card,
-                text=str(value),
-                font=("Arial", 28, "bold"),
-                text_color=color
-            )
-            value_label.pack(pady=(30, 5))
-            
-            title_label = ctk.CTkLabel(
-                card,
-                text=title,
-                font=("Arial", 14),
-                text_color="gray"
-            )
-            title_label.pack(pady=(0, 30))
+        stats_container = ctk.CTkFrame(
+            self.main_content,
+            fg_color="transparent"
+        )
+        stats_container.pack(fill="x", padx=25, pady=20)
+        
+        for i in range(4):
+            stats_container.grid_columnconfigure(i, weight=1)
+        
+        for i, stat in enumerate(stats):
+            self.create_stat_card(stats_container, stat, i)
+    
+    def create_stat_card(self, parent, stat, column):
+        """Create a single professional stat card"""
+        
+        card = ctk.CTkFrame(
+            parent,
+            fg_color="white",
+            corner_radius=12,
+            border_width=2,
+            border_color=stat["border"],
+            height=110
+        )
+        card.grid(row=0, column=column, padx=8, pady=8, sticky="nsew")
+        card.grid_propagate(False)
+        
+        icon_frame = ctk.CTkFrame(
+            card,
+            width=45,
+            height=45,
+            corner_radius=22,
+            fg_color=stat["bg"]
+        )
+        icon_frame.pack(pady=(10, 3))
+        icon_frame.pack_propagate(False)
+        
+        icon_label = ctk.CTkLabel(
+            icon_frame,
+            text=stat["icon"],
+            font=("Arial", 20),
+            text_color=stat["color"]
+        )
+        icon_label.pack(expand=True)
+        
+        value_label = ctk.CTkLabel(
+            card,
+            text=stat["value"],
+            font=("Arial", 20, "bold"),
+            text_color=stat["color"]
+        )
+        value_label.pack(pady=(2, 1))
+        
+        title_label = ctk.CTkLabel(
+            card,
+            text=stat["title"],
+            font=("Arial", 11),
+            text_color="#7f8c8d"
+        )
+        title_label.pack(pady=(0, 8))
     
     def show_students(self):
         """Show students view (Read Only)"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=100,
@@ -239,7 +280,7 @@ class PrincipalDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -249,7 +290,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Students list frame
         self.students_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="white",
@@ -257,7 +297,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.students_frame.pack(fill="both", expand=True, padx=30, pady=20)
         
-        # Refresh students list
         self.refresh_students_list()
     
     def refresh_students_list(self):
@@ -265,7 +304,6 @@ class PrincipalDashboard(ctk.CTk):
         for widget in self.students_frame.winfo_children():
             widget.destroy()
         
-        # Title
         list_title = ctk.CTkLabel(
             self.students_frame,
             text="All Students",
@@ -274,7 +312,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         list_title.pack(pady=10)
         
-        # Get all students
         students = self.db.query(Student).all()
         
         if not students:
@@ -287,14 +324,12 @@ class PrincipalDashboard(ctk.CTk):
             empty_label.pack(pady=50)
             return
         
-        # Create scrollable frame for students
         scroll_frame = ctk.CTkScrollableFrame(
             self.students_frame,
             fg_color="transparent"
         )
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Student cards
         for student in students:
             student_card = ctk.CTkFrame(
                 scroll_frame,
@@ -303,11 +338,9 @@ class PrincipalDashboard(ctk.CTk):
             )
             student_card.pack(fill="x", padx=10, pady=5)
             
-            # Get guardian for this student
             guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
             family_id = guardian.family_id if guardian else "N/A"
             
-            # Student info with family ID
             info_text = f"{student.full_name} | ID: {student.student_id} | Family: {family_id} | Class: {student.class_grade}"
             
             student_label = ctk.CTkLabel(
@@ -318,7 +351,6 @@ class PrincipalDashboard(ctk.CTk):
             )
             student_label.pack(side="left", padx=15, pady=10)
             
-            # View button
             view_btn = ctk.CTkButton(
                 student_card,
                 text="View",
@@ -349,7 +381,6 @@ class PrincipalDashboard(ctk.CTk):
         """Show teachers view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=100,
@@ -357,7 +388,7 @@ class PrincipalDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -367,7 +398,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Teachers list frame
         self.teachers_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="white",
@@ -375,7 +405,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.teachers_frame.pack(fill="both", expand=True, padx=30, pady=20)
         
-        # Refresh teachers list
         self.refresh_teachers_list()
     
     def refresh_teachers_list(self):
@@ -383,7 +412,6 @@ class PrincipalDashboard(ctk.CTk):
         for widget in self.teachers_frame.winfo_children():
             widget.destroy()
         
-        # Title
         list_title = ctk.CTkLabel(
             self.teachers_frame,
             text="All Teachers",
@@ -392,7 +420,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         list_title.pack(pady=10)
         
-        # Get all teachers
         teachers = self.db.query(Teacher).all()
         
         if not teachers:
@@ -405,14 +432,12 @@ class PrincipalDashboard(ctk.CTk):
             empty_label.pack(pady=50)
             return
         
-        # Create scrollable frame for teachers
         scroll_frame = ctk.CTkScrollableFrame(
             self.teachers_frame,
             fg_color="transparent"
         )
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Teacher cards
         for teacher in teachers:
             teacher_card = ctk.CTkFrame(
                 scroll_frame,
@@ -421,7 +446,6 @@ class PrincipalDashboard(ctk.CTk):
             )
             teacher_card.pack(fill="x", padx=10, pady=5)
             
-            # Teacher info
             info_text = f"{teacher.full_name} | {teacher.department} | {teacher.status}"
             
             teacher_label = ctk.CTkLabel(
@@ -436,7 +460,6 @@ class PrincipalDashboard(ctk.CTk):
         """Show fees view (View Only)"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=100,
@@ -444,7 +467,7 @@ class PrincipalDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -454,7 +477,6 @@ class PrincipalDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Fee summary
         summary_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="white",
@@ -462,10 +484,8 @@ class PrincipalDashboard(ctk.CTk):
         )
         summary_frame.pack(fill="both", expand=True, padx=30, pady=20)
         
-        # Get fee summary
         fee_summary = self.fee_service.get_fee_summary()
         
-        # Display summary
         summary_text = f"""
         Fee Summary:
         ============
@@ -514,13 +534,11 @@ class PrincipalDashboard(ctk.CTk):
             self.db.close()
             self.destroy()
             
-            # Import and show login window
             from app.ui.login_window import LoginWindow
             login_window = LoginWindow()
             login_window.mainloop()
 
 if __name__ == "__main__":
-    # Test with a dummy user
     from app.database.models import SessionLocal, User, UserRole
     db = SessionLocal()
     user = db.query(User).filter(User.role == UserRole.PRINCIPAL).first()

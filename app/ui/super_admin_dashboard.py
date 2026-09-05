@@ -14,7 +14,7 @@ from app.database.models import SessionLocal, User, UserRole, Guardian, Student
 from app.utils.auth import Authentication
 from app.services.fee_service import FeeService
 from app.ui.fee_challan_screen import FeeChallanlScreen
-from app.utils.center_window import center_and_maximize  # UI FIX
+from app.utils.center_window import center_and_maximize
 
 class SuperAdminDashboard(ctk.CTk):
     """Super Admin Dashboard Class"""
@@ -22,39 +22,29 @@ class SuperAdminDashboard(ctk.CTk):
     def __init__(self, user):
         super().__init__()
         
-        # Store current user
         self.current_user = user
         
-        # Configure window
         self.title("Super Scholars - Super Admin Dashboard")
         
-        # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         
-        # UI FIX: Center and maximize window after creation
         self.after(100, lambda: center_and_maximize(self))
         
-        # Initialize database
         self.db = SessionLocal()
         self.auth = Authentication(self.db)
         self.auth.current_user = user
         self.fee_service = FeeService(self.db)
         
-        # Create UI
         self.create_widgets()
         
     def create_widgets(self):
         """Create main dashboard layout"""
         
-        # Configure grid
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         
-        # Create sidebar
         self.create_sidebar()
-        
-        # Create main content area
         self.create_main_content()
         
     def create_sidebar(self):
@@ -67,9 +57,8 @@ class SuperAdminDashboard(ctk.CTk):
             fg_color="#1e3a5f"
         )
         self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_propagate(False)  # UI FIX: Keep fixed width
+        self.sidebar.grid_propagate(False)
         
-        # Logo
         self.logo_label = ctk.CTkLabel(
             self.sidebar,
             text="SUPER\nSCHOLARS",
@@ -79,7 +68,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.logo_label.pack(pady=(30, 40))
         
-        # User info frame
         self.user_frame = ctk.CTkFrame(
             self.sidebar,
             fg_color="#2c5282",
@@ -103,7 +91,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.user_role.pack(pady=(0, 10))
         
-        # Navigation buttons
         nav_items = [
             ("Dashboard", self.show_dashboard),
             ("Manage Users", self.show_users),
@@ -127,7 +114,6 @@ class SuperAdminDashboard(ctk.CTk):
             )
             button.pack(padx=20, pady=5)
         
-        # Logout button
         self.logout_button = ctk.CTkButton(
             self.sidebar,
             text="Logout",
@@ -150,7 +136,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.main_content.grid(row=0, column=1, sticky="nsew")
         
-        # Initialize with dashboard
         self.show_dashboard()
         
     def clear_main_content(self):
@@ -162,32 +147,28 @@ class SuperAdminDashboard(ctk.CTk):
         """Show dashboard view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
-            height=100,
+            height=70,
             fg_color="white",
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX: keep height consistent
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
             text="Dashboard Overview",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 22, "bold"),
             text_color="#1e3a5f"
         )
-        self.header_title.pack(side="left", padx=30, pady=30)
+        self.header_title.pack(side="left", padx=25, pady=20)
         
-        # Stats cards
-        self.stats_frame = ctk.CTkFrame(
-            self.main_content,
-            fg_color="transparent"
-        )
-        self.stats_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        self.create_stats_cards()
+    
+    def create_stats_cards(self):
+        """Create professional stats cards in a single row"""
         
-        # Get actual stats
         total_users = self.db.query(User).count()
         total_admins = self.db.query(User).filter(User.role == UserRole.ADMIN).count()
         total_principals = self.db.query(User).filter(User.role == UserRole.PRINCIPAL).count()
@@ -195,44 +176,112 @@ class SuperAdminDashboard(ctk.CTk):
         total_families = self.db.query(Guardian).count()
         
         stats = [
-            ("Total Users", total_users, "#3498db"),
-            ("Admins", total_admins, "#2ecc71"),
-            ("Principals", total_principals, "#e74c3c"),
-            ("Students", total_students, "#f39c12"),
-            ("Families", total_families, "#9b59b6")
+            {
+                "title": "Total Users",
+                "value": str(total_users),
+                "icon": "USR",
+                "color": "#3498db",
+                "bg": "#ebf5fb",
+                "border": "#3498db"
+            },
+            {
+                "title": "Admins",
+                "value": str(total_admins),
+                "icon": "ADM",
+                "color": "#27ae60",
+                "bg": "#e8f8f5",
+                "border": "#27ae60"
+            },
+            {
+                "title": "Principals",
+                "value": str(total_principals),
+                "icon": "PRN",
+                "color": "#e74c3c",
+                "bg": "#fdedec",
+                "border": "#e74c3c"
+            },
+            {
+                "title": "Students",
+                "value": str(total_students),
+                "icon": "STU",
+                "color": "#f39c12",
+                "bg": "#fef5e7",
+                "border": "#f39c12"
+            },
+            {
+                "title": "Families",
+                "value": str(total_families),
+                "icon": "FAM",
+                "color": "#9b59b6",
+                "bg": "#f4ecf7",
+                "border": "#9b59b6"
+            }
         ]
         
-        for i, (title, value, color) in enumerate(stats):
-            card = ctk.CTkFrame(
-                self.stats_frame,
-                width=200,
-                height=150,
-                fg_color="white",
-                corner_radius=15
-            )
-            card.grid(row=0, column=i, padx=10, pady=10)
-            
-            value_label = ctk.CTkLabel(
-                card,
-                text=str(value),
-                font=("Arial", 36, "bold"),
-                text_color=color
-            )
-            value_label.pack(pady=(30, 5))
-            
-            title_label = ctk.CTkLabel(
-                card,
-                text=title,
-                font=("Arial", 14),
-                text_color="gray"
-            )
-            title_label.pack(pady=(0, 30))
+        stats_container = ctk.CTkFrame(
+            self.main_content,
+            fg_color="transparent"
+        )
+        stats_container.pack(fill="x", padx=25, pady=20)
+        
+        for i in range(5):
+            stats_container.grid_columnconfigure(i, weight=1)
+        
+        for i, stat in enumerate(stats):
+            self.create_stat_card(stats_container, stat, i)
+    
+    def create_stat_card(self, parent, stat, column):
+        """Create a single professional stat card"""
+        
+        card = ctk.CTkFrame(
+            parent,
+            fg_color="white",
+            corner_radius=12,
+            border_width=2,
+            border_color=stat["border"],
+            height=110
+        )
+        card.grid(row=0, column=column, padx=8, pady=8, sticky="nsew")
+        card.grid_propagate(False)
+        
+        icon_frame = ctk.CTkFrame(
+            card,
+            width=45,
+            height=45,
+            corner_radius=22,
+            fg_color=stat["bg"]
+        )
+        icon_frame.pack(pady=(10, 3))
+        icon_frame.pack_propagate(False)
+        
+        icon_label = ctk.CTkLabel(
+            icon_frame,
+            text=stat["icon"],
+            font=("Arial", 12, "bold"),
+            text_color=stat["color"]
+        )
+        icon_label.pack(expand=True)
+        
+        value_label = ctk.CTkLabel(
+            card,
+            text=stat["value"],
+            font=("Arial", 20, "bold"),
+            text_color=stat["color"]
+        )
+        value_label.pack(pady=(2, 1))
+        
+        title_label = ctk.CTkLabel(
+            card,
+            text=stat["title"],
+            font=("Arial", 11),
+            text_color="#7f8c8d"
+        )
+        title_label.pack(pady=(0, 8))
     
     def show_users(self):
         """Show user management view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=100,
@@ -240,7 +289,7 @@ class SuperAdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -250,7 +299,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Add User Button
         self.add_user_btn = ctk.CTkButton(
             self.header_frame,
             text="+ Add User",
@@ -263,7 +311,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.add_user_btn.pack(side="right", padx=30, pady=20)
         
-        # Users list frame
         self.users_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="white",
@@ -271,7 +318,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.users_frame.pack(fill="both", expand=True, padx=30, pady=30)
         
-        # Refresh users list
         self.refresh_users_list()
     
     def refresh_users_list(self):
@@ -279,7 +325,6 @@ class SuperAdminDashboard(ctk.CTk):
         for widget in self.users_frame.winfo_children():
             widget.destroy()
         
-        # Title
         list_title = ctk.CTkLabel(
             self.users_frame,
             text="All Users",
@@ -288,10 +333,8 @@ class SuperAdminDashboard(ctk.CTk):
         )
         list_title.pack(pady=10)
         
-        # Get all users
         users = self.db.query(User).all()
         
-        # User cards
         for user in users:
             user_card = ctk.CTkFrame(
                 self.users_frame,
@@ -300,7 +343,6 @@ class SuperAdminDashboard(ctk.CTk):
             )
             user_card.pack(fill="x", padx=20, pady=5)
             
-            # User info
             info_text = f"{user.full_name} | @{user.username} | {user.role.value} | {'Active' if user.is_active else 'Inactive'}"
             
             user_label = ctk.CTkLabel(
@@ -311,7 +353,6 @@ class SuperAdminDashboard(ctk.CTk):
             )
             user_label.pack(side="left", padx=15, pady=10)
             
-            # Delete button
             delete_btn = ctk.CTkButton(
                 user_card,
                 text="Delete",
@@ -325,22 +366,17 @@ class SuperAdminDashboard(ctk.CTk):
     
     def show_add_user_form(self):
         """Show form to add new user"""
-        
-        # Create modal dialog
         dialog = ctk.CTkToplevel(self)
         dialog.title("Add New User")
         dialog.geometry("500x650")
         dialog.grab_set()
         
-        # UI FIX: Center dialog
         from app.utils.center_window import center_window
         dialog.after(100, lambda: center_window(dialog, 500, 650))
         
-        # Form frame
         form_frame = ctk.CTkFrame(dialog, fg_color="white", corner_radius=10)
         form_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Title
         title = ctk.CTkLabel(
             form_frame,
             text="Create New User",
@@ -349,7 +385,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         title.pack(pady=20)
         
-        # Form fields
         fields = [
             ("Full Name", "entry_full_name"),
             ("Username", "entry_username"),
@@ -378,7 +413,6 @@ class SuperAdminDashboard(ctk.CTk):
             
             entries[attr_name] = entry
         
-        # Role selection
         role_label = ctk.CTkLabel(
             form_frame,
             text="Role",
@@ -398,7 +432,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         role_menu.pack(padx=40, pady=(0, 20))
         
-        # Create button
         create_btn = ctk.CTkButton(
             form_frame,
             text="Create User",
@@ -413,25 +446,21 @@ class SuperAdminDashboard(ctk.CTk):
     
     def create_user(self, entries, role_var, dialog):
         """Create a new user"""
-        
         full_name = entries["entry_full_name"].get().strip()
         username = entries["entry_username"].get().strip()
         email = entries["entry_email"].get().strip()
         password = entries["entry_password"].get().strip()
         role = role_var.get()
         
-        # Validate
         if not all([full_name, username, email, password]):
             messagebox.showwarning("Warning", "Please fill all fields!")
             return
         
-        # Map role string to enum
         role_map = {
             "admin": UserRole.ADMIN,
             "principal": UserRole.PRINCIPAL
         }
         
-        # Create user
         result = self.auth.create_user(
             username=username,
             password=password,
@@ -461,7 +490,6 @@ class SuperAdminDashboard(ctk.CTk):
         """Show student management view"""
         self.clear_main_content()
         
-        # Header
         self.header_frame = ctk.CTkFrame(
             self.main_content,
             height=100,
@@ -469,7 +497,7 @@ class SuperAdminDashboard(ctk.CTk):
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
-        self.header_frame.pack_propagate(False)  # UI FIX
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
@@ -479,7 +507,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Students list frame
         self.students_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="white",
@@ -487,7 +514,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         self.students_frame.pack(fill="both", expand=True, padx=30, pady=30)
         
-        # Refresh students list
         self.refresh_students_list()
     
     def refresh_students_list(self):
@@ -495,7 +521,6 @@ class SuperAdminDashboard(ctk.CTk):
         for widget in self.students_frame.winfo_children():
             widget.destroy()
         
-        # Title
         list_title = ctk.CTkLabel(
             self.students_frame,
             text="All Students",
@@ -504,7 +529,6 @@ class SuperAdminDashboard(ctk.CTk):
         )
         list_title.pack(pady=10)
         
-        # Get all students
         students = self.db.query(Student).all()
         
         if not students:
@@ -517,14 +541,12 @@ class SuperAdminDashboard(ctk.CTk):
             empty_label.pack(pady=50)
             return
         
-        # Create scrollable frame for students
         scroll_frame = ctk.CTkScrollableFrame(
             self.students_frame,
             fg_color="transparent"
         )
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Student cards
         for student in students:
             student_card = ctk.CTkFrame(
                 scroll_frame,
@@ -533,11 +555,9 @@ class SuperAdminDashboard(ctk.CTk):
             )
             student_card.pack(fill="x", padx=10, pady=5)
             
-            # Get guardian for this student
             guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
             family_id = guardian.family_id if guardian else "N/A"
             
-            # Student info with family ID
             info_text = f"{student.full_name} | ID: {student.student_id} | Family: {family_id} | Class: {student.class_grade}"
             
             student_label = ctk.CTkLabel(
@@ -548,7 +568,6 @@ class SuperAdminDashboard(ctk.CTk):
             )
             student_label.pack(side="left", padx=15, pady=10)
             
-            # View button
             view_btn = ctk.CTkButton(
                 student_card,
                 text="View",
@@ -579,15 +598,12 @@ class SuperAdminDashboard(ctk.CTk):
         """Show fee management view"""
         self.clear_main_content()
         
-        # Create and display the Fee Challan Screen
         try:
             self.fee_challan_screen = FeeChallanlScreen(self.main_content, self.db)
             self.fee_challan_screen.pack(fill="both", expand=True)
         except Exception as e:
-            # Fallback to placeholder if there's an error
             messagebox.showerror("Error", f"Failed to load Fee Challan screen: {str(e)}")
             
-            # Header
             self.header_frame = ctk.CTkFrame(
                 self.main_content,
                 height=100,
@@ -595,7 +611,7 @@ class SuperAdminDashboard(ctk.CTk):
                 corner_radius=0
             )
             self.header_frame.pack(fill="x")
-            self.header_frame.pack_propagate(False)  # UI FIX
+            self.header_frame.pack_propagate(False)
             
             self.header_title = ctk.CTkLabel(
                 self.header_frame,
@@ -605,7 +621,6 @@ class SuperAdminDashboard(ctk.CTk):
             )
             self.header_title.pack(side="left", padx=30, pady=30)
             
-            # Add placeholder content
             placeholder = ctk.CTkLabel(
                 self.main_content,
                 text="Fee Management features coming soon...",
@@ -645,13 +660,11 @@ class SuperAdminDashboard(ctk.CTk):
             self.db.close()
             self.destroy()
             
-            # Import and show login window
             from app.ui.login_window import LoginWindow
             login_window = LoginWindow()
             login_window.mainloop()
 
 if __name__ == "__main__":
-    # Test with a dummy user
     from app.database.models import SessionLocal
     db = SessionLocal()
     user = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
