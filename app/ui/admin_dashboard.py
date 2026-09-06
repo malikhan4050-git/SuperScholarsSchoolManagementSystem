@@ -18,7 +18,7 @@ from app.services.fee_service import FeeService
 from app.ui.student_form import StudentRegistrationForm
 from app.ui.fee_challan_screen import FeeChallanlScreen
 from app.ui.promotion_screen import PromotionScreen
-from app.utils.center_window import center_and_maximize
+from app.utils.window_manager import maximize_and_center
 
 class AdminDashboard(ctk.CTk):
     """Admin Dashboard Class"""
@@ -37,7 +37,7 @@ class AdminDashboard(ctk.CTk):
         ctk.set_default_color_theme("blue")
         
         # Center and maximize window after creation
-        self.after(100, lambda: center_and_maximize(self))
+        maximize_and_center(self)
         
         # Initialize database
         self.db = SessionLocal()
@@ -403,21 +403,13 @@ class AdminDashboard(ctk.CTk):
             empty_frame = ctk.CTkFrame(self.students_frame, fg_color="transparent")
             empty_frame.pack(fill="both", expand=True)
             
-            empty_icon = ctk.CTkLabel(
-                empty_frame,
-                text="",
-                font=("Arial", 40),
-                text_color="#bdc3c7"
-            )
-            empty_icon.pack(pady=(50, 10))
-            
             empty_label = ctk.CTkLabel(
                 empty_frame,
                 text="No students found",
                 font=("Arial", 16, "bold"),
                 text_color="#7f8c8d"
             )
-            empty_label.pack()
+            empty_label.pack(pady=50)
             
             empty_sub = ctk.CTkLabel(
                 empty_frame,

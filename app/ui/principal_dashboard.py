@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from app.database.models import SessionLocal, Guardian, Student, FeeRecord, FeeStatus, Teacher
 from app.utils.auth import Authentication
 from app.services.fee_service import FeeService
-from app.utils.center_window import center_and_maximize
+from app.utils.window_manager import maximize_and_center
 
 class PrincipalDashboard(ctk.CTk):
     """Principal Dashboard Class"""
@@ -28,7 +28,7 @@ class PrincipalDashboard(ctk.CTk):
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         
-        self.after(100, lambda: center_and_maximize(self))
+        maximize_and_center(self)
         
         self.db = SessionLocal()
         self.auth = Authentication(self.db)

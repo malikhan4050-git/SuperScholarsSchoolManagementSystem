@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from app.database.models import SessionLocal
 from app.utils.auth import Authentication
-from app.utils.center_window import center_window, center_and_maximize
+from app.utils.window_manager import maximize_and_center
 
 class LoginWindow(ctk.CTk):
     """Login Window Class"""
@@ -28,7 +28,7 @@ class LoginWindow(ctk.CTk):
         ctk.set_default_color_theme("blue")
         
         # UI fix: Center and maximize window after creation
-        self.after(100, lambda: center_and_maximize(self))
+        maximize_and_center(self)
         
         # Initialize authentication
         self.db = SessionLocal()
