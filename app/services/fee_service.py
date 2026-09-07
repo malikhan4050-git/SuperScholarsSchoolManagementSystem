@@ -22,9 +22,7 @@ class FeeService:
         self.id_generator = IDGenerator()
     
     def create_fee_structure(self, data: dict) -> dict:
-        """
-        Create a new fee structure
-        """
+        """Create a new fee structure"""
         try:
             fee_structure = FeeStructure(
                 category=data['category'],
@@ -51,18 +49,14 @@ class FeeService:
         return self.db.query(FeeStructure).all()
     
     def generate_monthly_fees(self, month: int, year: int) -> dict:
-        """
-        Generate monthly fee records for all active students
-        """
+        """Generate monthly fee records for all active students"""
         try:
-            # Get all active students
             students = self.db.query(Student).filter(
                 Student.academic_status == "ACTIVE"
             ).all()
             
             count = 0
             for student in students:
-                # Check if fee already generated for this month
                 existing_fee = self.db.query(FeeRecord).filter(
                     FeeRecord.student_id == student.id,
                     FeeRecord.fee_type == "Monthly",
@@ -73,12 +67,10 @@ class FeeService:
                 if existing_fee:
                     continue
                 
-                # Calculate fee with discount
                 monthly_fee = student.monthly_tuition_fee
                 discount = student.discount_percentage / 100
                 final_fee = monthly_fee - (monthly_fee * discount)
                 
-                # Create fee record
                 fee_record = FeeRecord(
                     student_id=student.id,
                     fee_type="Monthly",
@@ -105,23 +97,19 @@ class FeeService:
             return {"success": False, "message": f"Error: {str(e)}"}
     
     def record_payment(self, fee_record_id: int, amount: float, payment_method: str) -> dict:
-        """
-        Record a payment for a fee record
-        """
+        """Record a payment for a fee record"""
         try:
             fee_record = self.db.query(FeeRecord).filter(FeeRecord.id == fee_record_id).first()
             
             if not fee_record:
                 return {"success": False, "message": "Fee record not found!"}
             
-            # Update payment
             fee_record.paid_amount += amount
             fee_record.remaining_amount = fee_record.amount - fee_record.paid_amount
             fee_record.paid_date = date.today()
             fee_record.payment_method = PaymentMethod(payment_method.lower())
             fee_record.receipt_number = self.id_generator.generate_receipt_number()
             
-            # Update status
             if fee_record.remaining_amount <= 0:
                 fee_record.status = FeeStatus.PAID
             elif fee_record.paid_amount > 0:
@@ -129,10 +117,8 @@ class FeeService:
             else:
                 fee_record.status = FeeStatus.PENDING
             
-            # Update student's total outstanding
             student = self.db.query(Student).filter(Student.id == fee_record.student_id).first()
             if student:
-                # Recalculate total outstanding
                 all_fees = self.db.query(FeeRecord).filter(
                     FeeRecord.student_id == student.id,
                     FeeRecord.status != FeeStatus.PAID
@@ -204,18 +190,15 @@ class FeeService:
     
     def get_all_families_with_students(self):
         """Get all families with their students"""
-        
-        # Group students by family_id
         families = self.db.query(Guardian).all()
         
         families_data = []
         for family in families:
-            # Get all students in this family
             students = self.db.query(Student).filter(
                 Student.guardian_id == family.id
             ).all()
             
-            if students:  # Only include families with students
+            if students:
                 family_data = {
                     'family_id': family.family_id,
                     'guardian_name': family.guardian_name,
@@ -240,13 +223,8 @@ class FeeService:
         
         return outstanding
     
-    # ===== NEW METHOD: Get total outstanding amount using exact_payable and is_paid =====
     def get_family_outstanding_amount_for_month(self, family_id: str, current_month: str, current_year: str = None) -> float:
-        """
-        Get total outstanding/arrears amount for a FAMILY for a specific month.
-        Uses exact_payable and is_paid fields to accurately track unpaid amounts.
-        """
-        # Define month order
+        """Get total outstanding/arrears amount for a FAMILY for a specific month"""
         month_order = {
             "January": 1, "February": 2, "March": 3, "April": 4,
             "May": 5, "June": 6, "July": 7, "August": 8,
@@ -256,7 +234,6 @@ class FeeService:
         current_month_num = month_order.get(current_month, 1)
         current_year_num = int(current_year) if current_year else datetime.now().year
         
-        # Get all challans for this family
         all_family_challans = self.db.query(FeeChallan).filter(
             FeeChallan.family_id == family_id
         ).all()
@@ -267,60 +244,59 @@ class FeeService:
             challan_month_num = month_order.get(challan_month, 1)
             challan_year_num = int(challan.challan_year) if challan.challan_year else datetime.now().year
             
-            # Only count challans from months BEFORE the current month in the SAME year or PREVIOUS years
             if challan_year_num < current_year_num:
-                # Previous years - all unpaid challans count
                 if not challan.is_paid:
                     total_outstanding += challan.exact_payable
             elif challan_year_num == current_year_num:
-                # Same year - only count months BEFORE current month
                 if challan_month_num < current_month_num:
                     if not challan.is_paid:
                         total_outstanding += challan.exact_payable
         
         return total_outstanding
     
-    # ===== KEEP THIS METHOD FOR BACKWARD COMPATIBILITY =====
     def get_student_outstanding_amount(self, student_id: int, current_month: str = None, current_year: str = None) -> float:
-        """
-        Get total outstanding/arrears amount for a single student.
-        This is kept for backward compatibility but should NOT be used for family totals.
-        """
-        # Get the student
+        """Get total outstanding/arrears amount for a single student"""
         student = self.db.query(Student).filter(Student.id == student_id).first()
         if not student:
             return 0
         
-        # Get the guardian for this student
         guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
         if not guardian:
             return 0
         
-        # If current_month is provided, filter to only PREVIOUS months
         if current_month:
-            # Use the family-level method to avoid double-counting
             return self.get_family_outstanding_amount_for_month(guardian.family_id, current_month, current_year)
         
-        # If no current_month provided, sum all unpaid challans for this family
         outstanding = self.db.query(FeeChallan).filter(
             FeeChallan.family_id == guardian.family_id,
-            FeeChallan.is_paid == False  # Only unpaid challans
+            FeeChallan.is_paid == False
         ).with_entities(
             func.sum(FeeChallan.exact_payable)
         ).scalar() or 0
         
         return outstanding
     
+    def check_challan_exists(self, family_id: str, challan_month: str, challan_year: str = None) -> bool:
+        """Check if a challan already exists for a family for a specific month/year"""
+        if not challan_year:
+            challan_year = str(datetime.now().year)
+        
+        existing_challan = self.db.query(FeeChallan).filter(
+            FeeChallan.family_id == family_id,
+            FeeChallan.challan_month == challan_month,
+            FeeChallan.challan_year == challan_year
+        ).first()
+        
+        return existing_challan is not None
+    
     def create_challan(self, challan_data: dict) -> dict:
         """Create a new fee challan - ONE PER FAMILY with all students combined"""
         try:
-            # Get family details
             guardian = self.db.query(Guardian).filter(Guardian.family_id == challan_data['family_id']).first()
             
             if not guardian:
                 return {"success": False, "message": "Family not found!"}
             
-            # Check if challan already exists for this family for this month
             existing_challan = self.db.query(FeeChallan).filter(
                 FeeChallan.family_id == challan_data['family_id'],
                 FeeChallan.challan_month == challan_data['challan_month'],
@@ -329,14 +305,13 @@ class FeeService:
             
             if existing_challan:
                 return {
-                    "success": False, 
-                    "message": f"Challan already exists for this family for {challan_data['challan_month']} {challan_data.get('challan_year', '')}!"
+                    "success": False,
+                    "message": f"Challan already exists for this family for {challan_data['challan_month']} {challan_data.get('challan_year', '')}!",
+                    "challan_exists": True
                 }
             
-            # Generate bill ID using FAMILY ID and SELECTED MONTH
             bill_id = self.id_generator.generate_bill_id(challan_data['family_id'], challan_data['challan_month'])
             
-            # Get all students in this family
             students = self.db.query(Student).filter(
                 Student.guardian_id == guardian.id
             ).all()
@@ -344,59 +319,38 @@ class FeeService:
             if not students:
                 return {"success": False, "message": "No students found for this family!"}
             
-            # Calculate combined totals for ALL students
             total_monthly = sum(s.monthly_tuition_fee for s in students)
             total_concession = sum(s.fee_concession for s in students)
             
-            # Get the challan year (NEW)
             challan_year = challan_data.get('challan_year', str(datetime.now().year))
             
-            # Get the due date (NEW)
             due_date_str = challan_data.get('due_date', date.today().strftime("%Y-%m-%d"))
             try:
                 due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
             except ValueError:
                 due_date = date.today()
             
-            # Calculate total arrears for the FAMILY (ONCE - not per student)
             total_arrears = self.get_family_outstanding_amount_for_month(
                 challan_data['family_id'], challan_data['challan_month'], challan_year
             )
             
-            # Get the extra fees from challan_data
             admission_fee = float(challan_data.get('admission_fee', 0))
             registration_fee = float(challan_data.get('registration_fee', 0))
             exam_fee = float(challan_data.get('exam_fee', 0))
             transport_fee = float(challan_data.get('transport_fee', 0))
             other_fee = float(challan_data.get('other_fee', 0))
             
-            # Build combined challan data
             total_amount = total_monthly + total_arrears + admission_fee + registration_fee + exam_fee + transport_fee + other_fee
             amount_due = total_amount - total_concession
             
-            # Calculate exact_payable: This is the ACTUAL amount to pay for THIS month (after concession)
             exact_payable = total_monthly + admission_fee + registration_fee + exam_fee + transport_fee + other_fee - total_concession
             
-            # Store students data as JSON for challan printing
-            students_data = []
-            for student in students:
-                students_data.append({
-                    'student_id': student.student_id,
-                    'student_name': f"{student.first_name} {student.last_name}",
-                    'class_grade': student.class_grade,
-                    'section': student.section,
-                    'monthly_fee': student.monthly_tuition_fee,
-                    'concession': student.fee_concession,
-                    'arrears': total_arrears  # Same for all students in family
-                })
-            
-            # Create challan record - ONE PER FAMILY (INCLUDING ALL FEES, YEAR, AND DUE DATE)
             challan = FeeChallan(
                 bill_id=bill_id,
                 family_id=challan_data['family_id'],
                 challan_month=challan_data['challan_month'],
                 challan_year=challan_year,
-                due_date=due_date,  # ✅ NOW SAVING THE DUE DATE
+                due_date=due_date,
                 guardian_name=guardian.guardian_name,
                 guardian_cnic=guardian.cnic,
                 total_monthly_tuition_fee=total_monthly,
@@ -416,7 +370,6 @@ class FeeService:
                 urdu_footer=challan_data.get('urdu_footer', 'Please pay fees before the due date')
             )
             
-            # Store students data as JSON in a separate field if needed (we'll use a method)
             self.db.add(challan)
             self.db.commit()
             
@@ -431,6 +384,31 @@ class FeeService:
         except Exception as e:
             self.db.rollback()
             return {"success": False, "message": f"Error: {str(e)}"}
+    
+    def replace_challan(self, family_id: str, challan_month: str, challan_year: str = None) -> bool:
+        """Delete existing challan for a family/month/year"""
+        try:
+            if not challan_year:
+                challan_year = str(datetime.now().year)
+            
+            existing_challan = self.db.query(FeeChallan).filter(
+                FeeChallan.family_id == family_id,
+                FeeChallan.challan_month == challan_month,
+                FeeChallan.challan_year == challan_year
+            ).first()
+            
+            if existing_challan:
+                self.db.delete(existing_challan)
+                self.db.commit()
+                print(f"Deleted existing challan for {family_id} - {challan_month} {challan_year}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error replacing challan: {str(e)}")
+            return False
     
     def get_student_by_id(self, student_id: str):
         """Get student by student_id"""
@@ -465,7 +443,6 @@ class FeeService:
             if payment_method:
                 challan.payment_method = payment_method
             
-            # If status is PAID, set is_paid to True
             if status == "PAID":
                 challan.is_paid = True
             

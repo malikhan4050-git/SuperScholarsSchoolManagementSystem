@@ -877,6 +877,21 @@ class FeeChallanlScreen(ctk.CTkFrame):
                     'other_fee': row_data['other_fee'],
                     'exact_payable': row_data['total_for_month']
                 }
+                
+                # ===== DEBUG PRINT =====
+                print("\n" + "=" * 60)
+                print(f"DEBUG: Creating challan data for family: {row_data['family_id']}")
+                print(f"  Monthly Fee: {row_data['monthly_fee']}")
+                print(f"  Concession: {row_data['fee_concession']}")
+                print(f"  Arrears: {row_data['arrears']}")
+                print(f"  Admission Fee: {row_data['admission_fee']}")
+                print(f"  Registration Fee: {row_data['registration_fee']}")
+                print(f"  Exam Fee: {row_data['exam_fee']}")
+                print(f"  Transport Fee: {row_data['transport_fee']}")
+                print(f"  Other Fee: {row_data['other_fee']}")
+                print(f"  Total for Month: {row_data['total_for_month']}")
+                print("=" * 60)
+                
                 challans_data.append(family_challan_data)
             
             if not challans_data:
