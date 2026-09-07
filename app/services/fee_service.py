@@ -245,12 +245,14 @@ class FeeService:
             challan_year_num = int(challan.challan_year) if challan.challan_year else datetime.now().year
             
             if challan_year_num < current_year_num:
+                # Previous years - all unpaid challans count (remaining_amount)
                 if not challan.is_paid:
-                    total_outstanding += challan.exact_payable
+                    total_outstanding += challan.remaining_amount  # FIXED: was challan.exact_payable
             elif challan_year_num == current_year_num:
+                # Same year - only count months BEFORE current month
                 if challan_month_num < current_month_num:
                     if not challan.is_paid:
-                        total_outstanding += challan.exact_payable
+                        total_outstanding += challan.remaining_amount  # FIXED: was challan.exact_payable
         
         return total_outstanding
     
@@ -271,7 +273,7 @@ class FeeService:
             FeeChallan.family_id == guardian.family_id,
             FeeChallan.is_paid == False
         ).with_entities(
-            func.sum(FeeChallan.exact_payable)
+            func.sum(FeeChallan.remaining_amount)  # FIXED: was exact_payable
         ).scalar() or 0
         
         return outstanding
@@ -330,9 +332,13 @@ class FeeService:
             except ValueError:
                 due_date = date.today()
             
-            total_arrears = self.get_family_outstanding_amount_for_month(
-                challan_data['family_id'], challan_data['challan_month'], challan_year
-            )
+            # FIXED: Use the total_arrears from challan_data if provided, otherwise calculate
+            if 'total_arrears' in challan_data and challan_data.get('total_arrears') is not None:
+                total_arrears = float(challan_data.get('total_arrears', 0))
+            else:
+                total_arrears = self.get_family_outstanding_amount_for_month(
+                    challan_data['family_id'], challan_data['challan_month'], challan_year
+                )
             
             admission_fee = float(challan_data.get('admission_fee', 0))
             registration_fee = float(challan_data.get('registration_fee', 0))
@@ -359,7 +365,7 @@ class FeeService:
                 total_exam_fee=exam_fee,
                 total_transport_fee=transport_fee,
                 total_other_fee=other_fee,
-                total_arrears=total_arrears,
+                total_arrears=total_arrears,  # FIXED: Use provided value
                 total_fee_concession=total_concession,
                 total_amount=total_amount,
                 amount_due=amount_due,

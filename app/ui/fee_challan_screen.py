@@ -406,7 +406,7 @@ class FeeChallanlScreen(ctk.CTkFrame):
         # Get ALL challans from PREVIOUS months for ALL families
         all_challans = self.db.query(FeeChallan).all()
         
-        # Group by family_id and sum exact_payable for previous months
+        # Group by family_id and sum remaining_amount for previous months
         for challan in all_challans:
             challan_month = challan.challan_month
             challan_month_num = month_order.get(challan_month, 1)
@@ -414,20 +414,18 @@ class FeeChallanlScreen(ctk.CTkFrame):
             
             # Only count challans from months BEFORE the current month in the SAME year or PREVIOUS years
             if challan_year_num < current_year_num:
-                # Previous years - all unpaid challans count
-                if not challan.is_paid:
-                    family_id = challan.family_id
-                    if family_id not in self.arrears_cache:
-                        self.arrears_cache[family_id] = 0
-                    self.arrears_cache[family_id] += challan.exact_payable
+                # Previous years - all remaining amounts count
+                family_id = challan.family_id
+                if family_id not in self.arrears_cache:
+                    self.arrears_cache[family_id] = 0
+                self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was challan.exact_payable
             elif challan_year_num == current_year_num:
                 # Same year - only count months BEFORE current month
                 if challan_month_num < current_month_num:
-                    if not challan.is_paid:
-                        family_id = challan.family_id
-                        if family_id not in self.arrears_cache:
-                            self.arrears_cache[family_id] = 0
-                        self.arrears_cache[family_id] += challan.exact_payable
+                    family_id = challan.family_id
+                    if family_id not in self.arrears_cache:
+                        self.arrears_cache[family_id] = 0
+                    self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was challan.exact_payable
     
     def load_families_data(self):
         """Load all families with students from database"""
@@ -877,21 +875,6 @@ class FeeChallanlScreen(ctk.CTkFrame):
                     'other_fee': row_data['other_fee'],
                     'exact_payable': row_data['total_for_month']
                 }
-                
-                # ===== DEBUG PRINT =====
-                print("\n" + "=" * 60)
-                print(f"DEBUG: Creating challan data for family: {row_data['family_id']}")
-                print(f"  Monthly Fee: {row_data['monthly_fee']}")
-                print(f"  Concession: {row_data['fee_concession']}")
-                print(f"  Arrears: {row_data['arrears']}")
-                print(f"  Admission Fee: {row_data['admission_fee']}")
-                print(f"  Registration Fee: {row_data['registration_fee']}")
-                print(f"  Exam Fee: {row_data['exam_fee']}")
-                print(f"  Transport Fee: {row_data['transport_fee']}")
-                print(f"  Other Fee: {row_data['other_fee']}")
-                print(f"  Total for Month: {row_data['total_for_month']}")
-                print("=" * 60)
-                
                 challans_data.append(family_challan_data)
             
             if not challans_data:

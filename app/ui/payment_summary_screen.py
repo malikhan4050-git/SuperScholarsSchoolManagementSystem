@@ -275,8 +275,8 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
         """Create a fixed-width table using Frames (SIMPLE, without canvas)"""
         
         # Define column widths (FIXED - no overlap possible)
-        self.col_widths = [180, 160, 160, 90, 90, 90, 90, 90, 90, 120]  # Added Student Name
-        self.headers = ["Bill ID", "Student Name", "Father Name", "Status", "Total Fees", "Paid", "Remaining", "Arrears", "Concession", "Payment Date"]
+        self.col_widths = [180, 200, 160, 90, 90, 90, 90, 90, 90, 120]  # Removed Student Name, added Family ID
+        self.headers = ["Bill ID", "Family ID", "Father Name", "Status", "Total Fees", "Paid", "Remaining", "Arrears", "Concession", "Payment Date"]
         
         # Table container
         table_container = ctk.CTkFrame(parent, fg_color="transparent")
@@ -334,6 +334,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
         
         total_paid = 0
         total_unpaid = 0
+        total_partial = 0
         total_challans = 0
         total_amount = 0
         total_arrears = 0
@@ -354,36 +355,38 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
             
             total_challans += 1
             total_amount += challan.amount_due
-            total_arrears += challan.arrears
-            total_concession += challan.fee_concession
+            total_arrears += challan.total_arrears  # FIXED: was challan.arrears
+            total_concession += challan.total_fee_concession  # FIXED: was challan.fee_concession
             
-            # Get student and guardian
-            student = self.db.query(Student).filter(Student.id == challan.student_id).first()
+            # Get guardian
             guardian = self.db.query(Guardian).filter(Guardian.family_id == challan.family_id).first()
-            
-            student_name = f"{student.first_name} {student.last_name}" if student else "N/A"
             father_name = guardian.guardian_name if guardian else "N/A"
             
             # Calculate amounts
             total_fee = challan.amount_due
             paid = challan.paid_amount
             remaining = challan.remaining_amount
-            arrears = challan.arrears
-            concession = challan.fee_concession
+            arrears = challan.total_arrears  # FIXED: was challan.arrears
+            concession = challan.total_fee_concession  # FIXED: was challan.fee_concession
             payment_date = challan.payment_date
             
             # Add to totals
             total_paid += paid
             total_unpaid += remaining
             
-            # Determine status
-            if remaining <= 0:
+            # Determine status: Paid, Unpaid, or Partial
+            if remaining <= 0 and paid > 0:
                 status = "Paid"
+                total_paid += 0  # Already added
+            elif paid > 0 and remaining > 0:
+                status = "Partial"
+                total_partial += 1
             else:
                 status = "Unpaid"
+                total_unpaid += 0  # Already added
             
             # Add to table
-            self.add_row(challan.bill_id, student_name, father_name, status, total_fee, paid, remaining, arrears, concession, payment_date)
+            self.add_row(challan.bill_id, challan.family_id, father_name, status, total_fee, paid, remaining, arrears, concession, payment_date)
         
         # Update summary cards
         self.paid_amount_label.configure(text=f"Rs. {total_paid:.0f}")
@@ -392,7 +395,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
         self.total_amount_label.configure(text=f"Rs. {total_amount:.0f}")
         self.total_arrears_label.configure(text=f"Rs. {total_arrears:.0f}")
     
-    def add_row(self, bill_id, student_name, father_name, status, total_fee, paid, remaining, arrears, concession, payment_date=None):
+    def add_row(self, bill_id, family_id, father_name, status, total_fee, paid, remaining, arrears, concession, payment_date=None):
         """Add a row with fixed-width cells"""
         
         # Create row frame
@@ -419,20 +422,20 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
         )
         bill_label.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Column 1: Student Name (NEW)
+        # Column 1: Family ID
         cell_1 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[1] + 10)
         cell_1.pack(side="left", padx=2)
         cell_1.pack_propagate(False)
         
-        student_label = ctk.CTkLabel(
+        family_label = ctk.CTkLabel(
             cell_1,
-            text=student_name,
+            text=family_id,
             font=("Arial", 11),
             text_color="#2c3e50",
             anchor="w",
             wraplength=self.col_widths[1]
         )
-        student_label.pack(fill="both", expand=True, padx=5, pady=5)
+        family_label.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Column 2: Father Name
         cell_2 = ctk.CTkFrame(row_frame, fg_color="transparent", width=self.col_widths[2] + 10)
@@ -454,11 +457,19 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
         cell_3.pack(side="left", padx=2)
         cell_3.pack_propagate(False)
         
+        # Choose color based on status
+        if status == "Paid":
+            status_color = "#2ecc71"
+        elif status == "Partial":
+            status_color = "#f39c12"
+        else:
+            status_color = "#e74c3c"
+        
         status_label = ctk.CTkLabel(
             cell_3,
             text=status,
             font=("Arial", 11, "bold"),
-            text_color="#2ecc71" if status == "Paid" else "#e74c3c",
+            text_color=status_color,
             anchor="center"
         )
         status_label.pack(fill="both", expand=True, padx=5, pady=5)
@@ -562,6 +573,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
             month_name = self.month_var.get()
             year = int(self.year_var.get())
             
+            # Get unpaid or partial challans
             challans = self.db.query(FeeChallan).filter(FeeChallan.remaining_amount > 0).all()
             
             if not challans:
@@ -572,7 +584,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
             ws = wb.active
             ws.title = f"Unpaid Students {month_name}"
             
-            headers = ["Bill ID", "Student Name", "Father Name", "Class", "Month", "Total Fee", "Paid", "Remaining", "Arrears", "Concession", "Payment Date", "Status"]
+            headers = ["Bill ID", "Family ID", "Father Name", "Month", "Total Fee", "Paid", "Remaining", "Arrears", "Concession", "Payment Date", "Status"]
             ws.append(headers)
             
             for cell in ws[1]:
@@ -583,24 +595,28 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
                 if challan.challan_month.lower() != month_name.lower():
                     continue
                 
-                student = self.db.query(Student).filter(Student.id == challan.student_id).first()
                 guardian = self.db.query(Guardian).filter(Guardian.family_id == challan.family_id).first()
                 
                 payment_date_text = challan.payment_date.strftime("%Y-%m-%d") if challan.payment_date else "N/A"
                 
+                # Determine status
+                if challan.paid_amount > 0 and challan.remaining_amount > 0:
+                    status = "Partial"
+                else:
+                    status = "Unpaid"
+                
                 ws.append([
                     challan.bill_id,
-                    f"{student.first_name} {student.last_name}" if student else "N/A",
+                    challan.family_id,
                     guardian.guardian_name if guardian else "N/A",
-                    student.class_grade if student else "N/A",
                     challan.challan_month,
                     challan.amount_due,
                     challan.paid_amount,
                     challan.remaining_amount,
-                    challan.arrears,
-                    challan.fee_concession,
+                    challan.total_arrears,  # FIXED: was challan.arrears
+                    challan.total_fee_concession,  # FIXED: was challan.fee_concession
                     payment_date_text,
-                    "Unpaid"
+                    status
                 ])
             
             for column in ws.columns:
@@ -630,6 +646,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
             month_name = self.month_var.get()
             year = int(self.year_var.get())
             
+            # Get paid challans (remaining_amount <= 0)
             challans = self.db.query(FeeChallan).filter(FeeChallan.remaining_amount <= 0).all()
             
             if not challans:
@@ -640,7 +657,7 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
             ws = wb.active
             ws.title = f"Paid Students {month_name}"
             
-            headers = ["Bill ID", "Student Name", "Father Name", "Class", "Month", "Total Fee", "Paid", "Remaining", "Arrears", "Concession", "Payment Date", "Status", "Receipt No"]
+            headers = ["Bill ID", "Family ID", "Father Name", "Month", "Total Fee", "Paid", "Remaining", "Arrears", "Concession", "Payment Date", "Status", "Receipt No"]
             ws.append(headers)
             
             for cell in ws[1]:
@@ -651,22 +668,20 @@ class PaymentSummaryScreen(ctk.CTkToplevel):
                 if challan.challan_month.lower() != month_name.lower():
                     continue
                 
-                student = self.db.query(Student).filter(Student.id == challan.student_id).first()
                 guardian = self.db.query(Guardian).filter(Guardian.family_id == challan.family_id).first()
                 
                 payment_date_text = challan.payment_date.strftime("%Y-%m-%d") if challan.payment_date else "N/A"
                 
                 ws.append([
                     challan.bill_id,
-                    f"{student.first_name} {student.last_name}" if student else "N/A",
+                    challan.family_id,
                     guardian.guardian_name if guardian else "N/A",
-                    student.class_grade if student else "N/A",
                     challan.challan_month,
                     challan.amount_due,
                     challan.paid_amount,
                     challan.remaining_amount,
-                    challan.arrears,
-                    challan.fee_concession,
+                    challan.total_arrears,  # FIXED: was challan.arrears
+                    challan.total_fee_concession,  # FIXED: was challan.fee_concession
                     payment_date_text,
                     "Paid",
                     challan.receipt_number if challan.receipt_number else "N/A"

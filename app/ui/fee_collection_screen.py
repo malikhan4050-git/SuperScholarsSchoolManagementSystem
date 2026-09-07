@@ -75,7 +75,7 @@ class FeeCollectionScreen(ctk.CTkToplevel):
         
         self.filter_entry = ctk.CTkEntry(
             search_row,
-            placeholder_text="Enter Bill ID (e.g., FM2600001-JAN)",
+            placeholder_text="Enter Bill ID (e.g., FM26-1-JAN)",
             font=("Arial", 14),
             height=45,
             width=500,
@@ -262,14 +262,25 @@ class FeeCollectionScreen(ctk.CTkToplevel):
         # Store current challan
         self.current_challan = challan
         
-        # Get student and guardian
-        student = self.db.query(Student).filter(Student.id == challan.student_id).first()
+        # Get guardian info (family)
         guardian = self.db.query(Guardian).filter(Guardian.family_id == challan.family_id).first()
         
-        # Update UI - Show Student ID as well
-        if student and guardian:
+        # Get all students in this family
+        students = []
+        if guardian:
+            students = self.db.query(Student).filter(Student.guardian_id == guardian.id).all()
+        
+        # Build student info string
+        student_names = ", ".join([f"{s.first_name} {s.last_name}" for s in students]) if students else "N/A"
+        
+        # Update UI - Show Family info
+        if guardian:
             self.student_label.configure(
-                text=f"Student: {student.first_name} {student.last_name} (ID: {student.student_id}) | Father: {guardian.guardian_name}"
+                text=f"Guardian: {guardian.guardian_name} | Family: {challan.family_id} | Students: {student_names}"
+            )
+        else:
+            self.student_label.configure(
+                text=f"Family: {challan.family_id} | Students: {student_names}"
             )
         
         # Update total fees (amount_due)
@@ -299,7 +310,7 @@ class FeeCollectionScreen(ctk.CTkToplevel):
             pass
     
     def save_payment(self):
-        """Save the payment"""
+        """Save the payment - Caps at amount_due"""
         
         if not self.current_challan:
             messagebox.showwarning("Warning", "Please search for a challan first!")
@@ -313,6 +324,24 @@ class FeeCollectionScreen(ctk.CTkToplevel):
                 messagebox.showwarning("Warning", "Please enter a valid paid amount!")
                 return
             
+            # Get current challan
+            challan = self.current_challan
+            
+            # Calculate remaining amount BEFORE payment
+            remaining_before = challan.amount_due - challan.paid_amount
+            
+            # CAP the payment at remaining amount
+            if paid_amount > remaining_before:
+                messagebox.showwarning(
+                    "Amount Exceeded", 
+                    f"The maximum payable amount is Rs. {remaining_before:.0f}.\n\n"
+                    f"You entered Rs. {paid_amount:.0f}.\n"
+                    f"Payment will be capped at Rs. {remaining_before:.0f}."
+                )
+                paid_amount = remaining_before
+                self.paid_entry.delete(0, "end")
+                self.paid_entry.insert(0, str(int(paid_amount)))
+            
             # Get date
             try:
                 payment_date = datetime.strptime(self.date_entry.get(), "%Y-%m-%d").date()
@@ -320,7 +349,6 @@ class FeeCollectionScreen(ctk.CTkToplevel):
                 payment_date = date.today()
             
             # Update challan
-            challan = self.current_challan
             challan.paid_amount += paid_amount
             challan.remaining_amount = challan.amount_due - challan.paid_amount
             challan.payment_date = payment_date
@@ -330,33 +358,37 @@ class FeeCollectionScreen(ctk.CTkToplevel):
             # Update status based on payment
             if challan.paid_amount >= challan.amount_due:
                 challan.status = "PAID"
+                challan.is_paid = True
             elif challan.paid_amount > 0:
                 challan.status = "PARTIAL"
             else:
                 challan.status = "PENDING"
             
-            # Create a FeeRecord entry
-            fee_record = FeeRecord(
-                student_id=challan.student_id,
-                fee_type="Monthly",
-                amount=challan.amount_due,
-                paid_amount=paid_amount,
-                remaining_amount=challan.remaining_amount,
-                due_date=payment_date,
-                paid_date=payment_date,
-                status=FeeStatus.PAID if challan.paid_amount >= challan.amount_due else FeeStatus.PARTIAL,
-                payment_method=PaymentMethod.CASH,
-                receipt_number=challan.receipt_number,
-                description=f"Payment for {challan.challan_month}"
-            )
-            self.db.add(fee_record)
-            
-            # Update student's total outstanding
-            student = self.db.query(Student).filter(Student.id == challan.student_id).first()
-            if student:
-                student.total_outstanding_amount = challan.remaining_amount
-                student.last_payment_date = payment_date
-                student.last_payment_amount = paid_amount
+            # Create FeeRecord entries for EACH student in the family
+            guardian = self.db.query(Guardian).filter(Guardian.family_id == challan.family_id).first()
+            if guardian:
+                students = self.db.query(Student).filter(Student.guardian_id == guardian.id).all()
+                
+                for student in students:
+                    fee_record = FeeRecord(
+                        student_id=student.id,
+                        fee_type="Monthly",
+                        amount=challan.amount_due,
+                        paid_amount=paid_amount,
+                        remaining_amount=challan.remaining_amount,
+                        due_date=payment_date,
+                        paid_date=payment_date,
+                        status=FeeStatus.PAID if challan.paid_amount >= challan.amount_due else FeeStatus.PARTIAL,
+                        payment_method=PaymentMethod.CASH,
+                        receipt_number=challan.receipt_number,
+                        description=f"Payment for {challan.challan_month}"
+                    )
+                    self.db.add(fee_record)
+                    
+                    # Update student's total outstanding
+                    student.total_outstanding_amount = challan.remaining_amount
+                    student.last_payment_date = payment_date
+                    student.last_payment_amount = paid_amount
             
             # Commit
             self.db.commit()
