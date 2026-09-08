@@ -406,26 +406,35 @@ class FeeChallanlScreen(ctk.CTkFrame):
         # Get ALL challans from PREVIOUS months for ALL families
         all_challans = self.db.query(FeeChallan).all()
         
-        # Group by family_id and sum remaining_amount for previous months
+        # **FIXED**: Only count the MOST RECENT previous month for each family
+        # Sort by family_id, year, month to find the most recent previous month
+        all_challans.sort(key=lambda c: (c.family_id, c.challan_year, c.challan_month))
+        
+        # Group by family_id
+        family_challans = {}
         for challan in all_challans:
-            challan_month = challan.challan_month
-            challan_month_num = month_order.get(challan_month, 1)
-            challan_year_num = int(challan.challan_year) if challan.challan_year else datetime.now().year
+            family_id = challan.family_id
+            if family_id not in family_challans:
+                family_challans[family_id] = []
+            family_challans[family_id].append(challan)
+        
+        # For each family, find the MOST RECENT previous month challan
+        for family_id, challans in family_challans.items():
+            # Sort challans by year and month (most recent first)
+            challans.sort(key=lambda c: (int(c.challan_year), month_order.get(c.challan_month, 1)), reverse=True)
             
-            # Only count challans from months BEFORE the current month in the SAME year or PREVIOUS years
-            if challan_year_num < current_year_num:
-                # Previous years - all remaining amounts count
-                family_id = challan.family_id
-                if family_id not in self.arrears_cache:
-                    self.arrears_cache[family_id] = 0
-                self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was exact_payable
-            elif challan_year_num == current_year_num:
-                # Same year - only count months BEFORE current month
-                if challan_month_num < current_month_num:
-                    family_id = challan.family_id
+            for challan in challans:
+                challan_month = challan.challan_month
+                challan_month_num = month_order.get(challan_month, 1)
+                challan_year_num = int(challan.challan_year) if challan.challan_year else datetime.now().year
+                
+                # Only consider challans from months BEFORE the current month
+                if challan_year_num < current_year_num or (challan_year_num == current_year_num and challan_month_num < current_month_num):
+                    # Add ONLY the most recent previous month's remaining_amount
                     if family_id not in self.arrears_cache:
                         self.arrears_cache[family_id] = 0
-                    self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was exact_payable
+                    self.arrears_cache[family_id] += challan.remaining_amount
+                    break  # Stop after finding the most recent previous month
     
     def load_families_data(self):
         """Load all families with students from database"""

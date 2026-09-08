@@ -224,7 +224,13 @@ class FeeService:
         return outstanding
     
     def get_family_outstanding_amount_for_month(self, family_id: str, current_month: str, current_year: str = None) -> float:
-        """Get total outstanding/arrears amount for a FAMILY for a specific month"""
+        """
+        Get total outstanding/arrears amount for a FAMILY for a specific month.
+        Logic: Only look at the MOST RECENT previous month challan.
+        - If NOT paid at all: Add its remaining_amount.
+        - If PARTIALLY paid: Add its current remaining_amount.
+        - If FULLY paid: Add 0.
+        """
         month_order = {
             "January": 1, "February": 2, "March": 3, "April": 4,
             "May": 5, "June": 6, "July": 7, "August": 8,
@@ -234,8 +240,12 @@ class FeeService:
         current_month_num = month_order.get(current_month, 1)
         current_year_num = int(current_year) if current_year else datetime.now().year
         
+        # Get all challans for this family, sorted by month/year descending (most recent first)
         all_family_challans = self.db.query(FeeChallan).filter(
             FeeChallan.family_id == family_id
+        ).order_by(
+            FeeChallan.challan_year.desc(),
+            FeeChallan.challan_month.desc()
         ).all()
         
         total_outstanding = 0
@@ -244,15 +254,14 @@ class FeeService:
             challan_month_num = month_order.get(challan_month, 1)
             challan_year_num = int(challan.challan_year) if challan.challan_year else datetime.now().year
             
-            if challan_year_num < current_year_num:
-                # Previous years - all unpaid challans count (remaining_amount)
-                if not challan.is_paid:
-                    total_outstanding += challan.remaining_amount  # FIXED: was exact_payable
-            elif challan_year_num == current_year_num:
-                # Same year - only count months BEFORE current month
-                if challan_month_num < current_month_num:
-                    if not challan.is_paid:
-                        total_outstanding += challan.remaining_amount  # FIXED: was exact_payable
+            # Only consider challans from months BEFORE the current month
+            if challan_year_num < current_year_num or (challan_year_num == current_year_num and challan_month_num < current_month_num):
+                
+                # If partially or not paid, add remaining_amount
+                total_outstanding += challan.remaining_amount
+                
+                # Only count the MOST RECENT previous month challan
+                break
         
         return total_outstanding
     
@@ -273,7 +282,7 @@ class FeeService:
             FeeChallan.family_id == guardian.family_id,
             FeeChallan.is_paid == False
         ).with_entities(
-            func.sum(FeeChallan.remaining_amount)  # FIXED: was exact_payable
+            func.sum(FeeChallan.remaining_amount)
         ).scalar() or 0
         
         return outstanding
@@ -332,13 +341,8 @@ class FeeService:
             except ValueError:
                 due_date = date.today()
             
-            # FIXED: Use the total_arrears from challan_data if provided, otherwise calculate
-            if 'total_arrears' in challan_data and challan_data.get('total_arrears') is not None:
-                total_arrears = float(challan_data.get('total_arrears', 0))
-            else:
-                total_arrears = self.get_family_outstanding_amount_for_month(
-                    challan_data['family_id'], challan_data['challan_month'], challan_year
-                )
+            # **FIXED**: ALWAYS use the total_arrears from challan_data (provided by fee_challan_screen)
+            total_arrears = float(challan_data.get('total_arrears', 0))
             
             admission_fee = float(challan_data.get('admission_fee', 0))
             registration_fee = float(challan_data.get('registration_fee', 0))
@@ -365,7 +369,7 @@ class FeeService:
                 total_exam_fee=exam_fee,
                 total_transport_fee=transport_fee,
                 total_other_fee=other_fee,
-                total_arrears=total_arrears,  # FIXED: Use provided value
+                total_arrears=total_arrears,
                 total_fee_concession=total_concession,
                 total_amount=total_amount,
                 amount_due=amount_due,

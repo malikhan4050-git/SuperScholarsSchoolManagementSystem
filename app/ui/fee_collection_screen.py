@@ -310,7 +310,7 @@ class FeeCollectionScreen(ctk.CTkToplevel):
             pass
     
     def save_payment(self):
-        """Save the payment - Caps at amount_due"""
+        """Save the payment - REJECT if amount exceeds remaining"""
         
         if not self.current_challan:
             messagebox.showwarning("Warning", "Please search for a challan first!")
@@ -330,17 +330,17 @@ class FeeCollectionScreen(ctk.CTkToplevel):
             # Calculate remaining amount BEFORE payment
             remaining_before = challan.amount_due - challan.paid_amount
             
-            # CAP the payment at remaining amount
+            # **NEW BEHAVIOR**: REJECT if paid_amount exceeds remaining_before
             if paid_amount > remaining_before:
                 messagebox.showwarning(
-                    "Amount Exceeded", 
-                    f"The maximum payable amount is Rs. {remaining_before:.0f}.\n\n"
-                    f"You entered Rs. {paid_amount:.0f}.\n"
-                    f"Payment will be capped at Rs. {remaining_before:.0f}."
+                    "Invalid Amount",
+                    f"You entered an amount higher than the payable amount.\n\n"
+                    f"Remaining Payable: Rs. {remaining_before:.0f}\n"
+                    f"You entered: Rs. {paid_amount:.0f}\n\n"
+                    f"Please enter the correct amount and try again."
                 )
-                paid_amount = remaining_before
-                self.paid_entry.delete(0, "end")
-                self.paid_entry.insert(0, str(int(paid_amount)))
+                # DO NOT save anything, just return
+                return
             
             # Get date
             try:
