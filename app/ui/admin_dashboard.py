@@ -11,13 +11,14 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from sqlalchemy import func
 from app.database.models import SessionLocal, Student, Teacher, FeeRecord, FeeStatus, Guardian, FeeChallan
 from app.utils.auth import Authentication
 from app.services.student_service import StudentService
 from app.services.fee_service import FeeService
 from app.ui.student_form import StudentRegistrationForm
 from app.ui.fee_challan_screen import FeeChallanlScreen
-from app.ui.promotion_screen import PromotionScreen  # Add this import
+from app.ui.promotion_screen import PromotionScreen
 
 class AdminDashboard(ctk.CTk):
     """Admin Dashboard Class"""
@@ -104,15 +105,13 @@ class AdminDashboard(ctk.CTk):
         )
         self.user_role.pack(pady=(0, 10))
         
-        # Navigation buttons
+        # Navigation buttons - SETTINGS & REPORTS REMOVED
         nav_items = [
             ("Dashboard", self.show_dashboard),
             ("Students", self.show_students),
-            ("Promote Students", self.show_promotion),  # Add this
+            ("Promote Students", self.show_promotion),
             ("Fee Management", self.show_fees),
-            ("Record Payment", self.show_payments),
-            ("Reports", self.show_reports),
-            ("Settings", self.show_settings)
+            ("Record Payment", self.show_payments)
         ]
         
         for text, command in nav_items:
@@ -190,18 +189,28 @@ class AdminDashboard(ctk.CTk):
         
         # Get actual stats
         total_students = self.db.query(Student).count()
-        total_fees_pending = self.db.query(FeeRecord).filter(
-            FeeRecord.status == FeeStatus.PENDING
-        ).count()
         
-        # Fee summary
-        fee_summary = self.fee_service.get_fee_summary()
+        # FIXED: Count pending fees from FeeChallan (not FeeRecord)
+        pending_challans = self.db.query(FeeChallan).filter(
+            FeeChallan.is_paid == False
+        ).count()
+        total_fees_pending = pending_challans
+        
+        # FIXED: Calculate total collected from FeeChallan
+        total_collected = self.db.query(FeeChallan).with_entities(
+            func.sum(FeeChallan.paid_amount)
+        ).scalar() or 0
+        
+        # FIXED: Calculate total outstanding from FeeChallan
+        total_outstanding = self.db.query(FeeChallan).with_entities(
+            func.sum(FeeChallan.remaining_amount)
+        ).scalar() or 0
         
         stats = [
             ("Total Students", total_students, "#3498db"),
-            ("Pending Fees", total_fees_pending, "#e74c3c"),
-            ("Total Collected", f"Rs. {fee_summary['total_collected']:,.0f}", "#2ecc71"),
-            ("Outstanding", f"Rs. {fee_summary['total_outstanding']:,.0f}", "#f39c12")
+            ("Pending Challans", total_fees_pending, "#e74c3c"),
+            ("Total Collected", f"Rs. {total_collected:,.0f}", "#2ecc71"),
+            ("Outstanding", f"Rs. {total_outstanding:,.0f}", "#f39c12")
         ]
         
         for i, (title, value, color) in enumerate(stats):
@@ -251,7 +260,7 @@ class AdminDashboard(ctk.CTk):
         )
         self.header_title.pack(side="left", padx=30, pady=30)
         
-        # Add Student Button (now opens new form)
+        # Add Student Button
         self.add_student_btn = ctk.CTkButton(
             self.header_frame,
             text="+ Add Student",
@@ -308,13 +317,11 @@ class AdminDashboard(ctk.CTk):
         self.clear_main_content()
         
         try:
-            # Create and display the promotion screen
             self.promotion_screen = PromotionScreen(self.main_content, self.db, self.student_service)
             self.promotion_screen.pack(fill="both", expand=True)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load Promotion screen: {str(e)}")
             
-            # Fallback placeholder
             self.header_frame = ctk.CTkFrame(
                 self.main_content,
                 height=100,
@@ -340,16 +347,15 @@ class AdminDashboard(ctk.CTk):
             placeholder.pack(pady=100)
     
     def show_add_student_form(self):
-        """Show the new professional student registration form"""
+        """Show the student registration form"""
         form = StudentRegistrationForm(self, self.student_service)
         self.wait_window(form)
         self.refresh_students_list()
     
     def edit_student(self, student_id):
-        """Edit student details - Opens the edit form with pre-filled data"""
+        """Edit student details"""
         student = self.student_service.get_student_by_id(student_id)
         if student:
-            # Open the registration form in edit mode
             form = StudentRegistrationForm(self, self.student_service, student=student)
             self.wait_window(form)
             self.refresh_students_list()
@@ -361,7 +367,6 @@ class AdminDashboard(ctk.CTk):
         for widget in self.students_frame.winfo_children():
             widget.destroy()
         
-        # Title
         list_title = ctk.CTkLabel(
             self.students_frame,
             text="All Students",
@@ -370,7 +375,6 @@ class AdminDashboard(ctk.CTk):
         )
         list_title.pack(pady=10)
         
-        # Get students
         if students is None:
             students = self.student_service.get_all_students()
         
@@ -384,14 +388,12 @@ class AdminDashboard(ctk.CTk):
             empty_label.pack(pady=50)
             return
         
-        # Create scrollable frame for students
         scroll_frame = ctk.CTkScrollableFrame(
             self.students_frame,
             fg_color="transparent"
         )
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Student cards
         for student in students:
             student_card = ctk.CTkFrame(
                 scroll_frame,
@@ -400,11 +402,9 @@ class AdminDashboard(ctk.CTk):
             )
             student_card.pack(fill="x", padx=10, pady=5)
             
-            # Get guardian for this student
             guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
             family_id = guardian.family_id if guardian else "N/A"
             
-            # Student info with family ID
             info_text = f"{student.full_name} | ID: {student.student_id} | Family: {family_id} | Class: {student.class_grade}"
             
             student_label = ctk.CTkLabel(
@@ -415,7 +415,6 @@ class AdminDashboard(ctk.CTk):
             )
             student_label.pack(side="left", padx=15, pady=10)
             
-            # View button
             view_btn = ctk.CTkButton(
                 student_card,
                 text="View",
@@ -427,7 +426,6 @@ class AdminDashboard(ctk.CTk):
             )
             view_btn.pack(side="right", padx=5, pady=5)
             
-            # Edit button
             edit_btn = ctk.CTkButton(
                 student_card,
                 text="Edit",
@@ -439,7 +437,6 @@ class AdminDashboard(ctk.CTk):
             )
             edit_btn.pack(side="right", padx=5, pady=5)
             
-            # Delete button
             delete_btn = ctk.CTkButton(
                 student_card,
                 text="Delete",
@@ -461,22 +458,20 @@ class AdminDashboard(ctk.CTk):
             self.refresh_students_list()
     
     def view_student(self, student_id):
-        """View student details in a full screen window"""
+        """View student details"""
         from app.ui.student_details_screen import StudentDetailsWindow
         StudentDetailsWindow(self, student_id, self.db)
     
     def delete_student(self, student_id):
-        """Delete a student with proper confirmation"""
+        """Delete a student"""
         student = self.student_service.get_student_by_id(student_id)
         if not student:
             messagebox.showerror("Error", "Student not found!")
             return
         
-        # Get guardian for context
         guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
         family_id = guardian.family_id if guardian else "N/A"
         
-        # Confirm deletion
         confirm_msg = (
             f"Are you sure you want to delete this student?\n\n"
             f"Student: {student.full_name}\n"
@@ -500,15 +495,12 @@ class AdminDashboard(ctk.CTk):
         """Show fee management view"""
         self.clear_main_content()
         
-        # Create and display the Fee Challan Screen
         try:
             self.fee_challan_screen = FeeChallanlScreen(self.main_content, self.db)
             self.fee_challan_screen.pack(fill="both", expand=True)
         except Exception as e:
-            # Fallback to placeholder if there's an error
             messagebox.showerror("Error", f"Failed to load Fee Challan screen: {str(e)}")
             
-            # Header
             self.header_frame = ctk.CTkFrame(
                 self.main_content,
                 height=100,
@@ -525,7 +517,6 @@ class AdminDashboard(ctk.CTk):
             )
             self.header_title.pack(side="left", padx=30, pady=30)
             
-            # Add placeholder content
             placeholder = ctk.CTkLabel(
                 self.main_content,
                 text="Fee Management features coming soon...",
@@ -542,66 +533,6 @@ class AdminDashboard(ctk.CTk):
         self.record_payment_screen = RecordPaymentScreen(self.main_content, self.db)
         self.record_payment_screen.pack(fill="both", expand=True)
     
-    def show_reports(self):
-        """Show reports view"""
-        self.clear_main_content()
-        
-        # Header
-        self.header_frame = ctk.CTkFrame(
-            self.main_content,
-            height=100,
-            fg_color="white",
-            corner_radius=0
-        )
-        self.header_frame.pack(fill="x")
-        
-        self.header_title = ctk.CTkLabel(
-            self.header_frame,
-            text="Reports",
-            font=("Arial", 24, "bold"),
-            text_color="#1e3a5f"
-        )
-        self.header_title.pack(side="left", padx=30, pady=30)
-        
-        # Add placeholder content
-        placeholder = ctk.CTkLabel(
-            self.main_content,
-            text="Reports features coming soon...",
-            font=("Arial", 18),
-            text_color="gray"
-        )
-        placeholder.pack(pady=100)
-    
-    def show_settings(self):
-        """Show settings view"""
-        self.clear_main_content()
-        
-        # Header
-        self.header_frame = ctk.CTkFrame(
-            self.main_content,
-            height=100,
-            fg_color="white",
-            corner_radius=0
-        )
-        self.header_frame.pack(fill="x")
-        
-        self.header_title = ctk.CTkLabel(
-            self.header_frame,
-            text="Settings",
-            font=("Arial", 24, "bold"),
-            text_color="#1e3a5f"
-        )
-        self.header_title.pack(side="left", padx=30, pady=30)
-        
-        # Add placeholder content
-        placeholder = ctk.CTkLabel(
-            self.main_content,
-            text="Settings features coming soon...",
-            font=("Arial", 18),
-            text_color="gray"
-        )
-        placeholder.pack(pady=100)
-    
     def logout(self):
         """Logout from the system"""
         if messagebox.askyesno("Confirm", "Are you sure you want to logout?"):
@@ -609,13 +540,11 @@ class AdminDashboard(ctk.CTk):
             self.db.close()
             self.destroy()
             
-            # Import and show login window
             from app.ui.login_window import LoginWindow
             login_window = LoginWindow()
             login_window.mainloop()
 
 if __name__ == "__main__":
-    # Test with a dummy user
     from app.database.models import SessionLocal, User, UserRole
     db = SessionLocal()
     user = db.query(User).filter(User.role == UserRole.ADMIN).first()
