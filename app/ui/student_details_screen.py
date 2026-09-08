@@ -39,14 +39,6 @@ class StudentDetailsWindow(ctk.CTkToplevel):
         # Get guardian
         self.guardian = self.db.query(Guardian).filter(Guardian.id == self.student.guardian_id).first()
         
-        # Get fee records
-        self.fee_records = self.db.query(FeeRecord).filter(FeeRecord.student_id == self.student.id).order_by(FeeRecord.due_date.desc()).all()
-        
-        # Get challans for this family
-        self.challans = []
-        if self.guardian:
-            self.challans = self.db.query(FeeChallan).filter(FeeChallan.family_id == self.guardian.family_id).order_by(FeeChallan.challan_month.desc()).all()
-        
         # Create UI
         self.create_widgets()
         
@@ -116,11 +108,11 @@ class StudentDetailsWindow(ctk.CTkToplevel):
         # ===== FEE INFORMATION CARD =====
         self.create_info_card("Fee Information", self.get_fee_info())
         
-        # ===== FEE RECORDS TABLE =====
-        self.create_fee_records_table()
+        # ===== FEE RECORDS TABLE ===== (REMOVED)
+        # self.create_fee_records_table()
         
-        # ===== CHALLANS TABLE =====
-        self.create_challans_table()
+        # ===== CHALLANS TABLE ===== (REMOVED)
+        # self.create_challans_table()
     
     def create_info_card(self, title, data_dict):
         """Create an information card"""
@@ -161,142 +153,6 @@ class StudentDetailsWindow(ctk.CTkToplevel):
             )
             value_label.pack(side="left", padx=10)
     
-    def create_fee_records_table(self):
-        """Create fee records table"""
-        
-        table_card = ctk.CTkFrame(self.content_scroll, fg_color="white", corner_radius=10)
-        table_card.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        # Title
-        title_label = ctk.CTkLabel(
-            table_card,
-            text=f"Fee Records ({len(self.fee_records)})",
-            font=("Arial", 18, "bold"),
-            text_color="#1e3a5f"
-        )
-        title_label.pack(pady=(15, 10))
-        
-        if not self.fee_records:
-            empty_label = ctk.CTkLabel(
-                table_card,
-                text="No fee records found.",
-                font=("Arial", 14),
-                text_color="gray"
-            )
-            empty_label.pack(pady=20)
-            return
-        
-        # Create table header
-        headers = ["Date", "Type", "Amount", "Paid", "Remaining", "Status", "Receipt #"]
-        widths = [100, 100, 100, 100, 100, 100, 120]
-        
-        header_frame = ctk.CTkFrame(table_card, fg_color="#1e3a5f")
-        header_frame.pack(fill="x", padx=10)
-        
-        for header, width in zip(headers, widths):
-            label = ctk.CTkLabel(
-                header_frame,
-                text=header,
-                font=("Arial", 12, "bold"),
-                text_color="white",
-                width=width
-            )
-            label.pack(side="left", padx=2, pady=5)
-        
-        # Create rows
-        for record in self.fee_records:
-            row = ctk.CTkFrame(table_card, fg_color="#f8f9fa")
-            row.pack(fill="x", padx=10, pady=2)
-            
-            values = [
-                record.due_date.strftime("%Y-%m-%d") if record.due_date else "N/A",
-                record.fee_type,
-                f"Rs. {record.amount:.0f}",
-                f"Rs. {record.paid_amount:.0f}",
-                f"Rs. {record.remaining_amount:.0f}",
-                record.status.value if record.status else "N/A",
-                record.receipt_number or "N/A"
-            ]
-            
-            for value, width in zip(values, widths):
-                label = ctk.CTkLabel(
-                    row,
-                    text=value,
-                    font=("Arial", 12),
-                    text_color="#333333",
-                    width=width,
-                    anchor="center"
-                )
-                label.pack(side="left", padx=2, pady=5)
-    
-    def create_challans_table(self):
-        """Create challans table"""
-        
-        table_card = ctk.CTkFrame(self.content_scroll, fg_color="white", corner_radius=10)
-        table_card.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        # Title
-        title_label = ctk.CTkLabel(
-            table_card,
-            text=f"Challans ({len(self.challans)})",
-            font=("Arial", 18, "bold"),
-            text_color="#1e3a5f"
-        )
-        title_label.pack(pady=(15, 10))
-        
-        if not self.challans:
-            empty_label = ctk.CTkLabel(
-                table_card,
-                text="No challans found.",
-                font=("Arial", 14),
-                text_color="gray"
-            )
-            empty_label.pack(pady=20)
-            return
-        
-        # Create table header
-        headers = ["Bill ID", "Month", "Total", "Paid", "Remaining", "Status", "Due Date"]
-        widths = [120, 100, 100, 100, 100, 100, 100]
-        
-        header_frame = ctk.CTkFrame(table_card, fg_color="#1e3a5f")
-        header_frame.pack(fill="x", padx=10)
-        
-        for header, width in zip(headers, widths):
-            label = ctk.CTkLabel(
-                header_frame,
-                text=header,
-                font=("Arial", 12, "bold"),
-                text_color="white",
-                width=width
-            )
-            label.pack(side="left", padx=2, pady=5)
-        
-        # Create rows
-        for challan in self.challans:
-            row = ctk.CTkFrame(table_card, fg_color="#f8f9fa")
-            row.pack(fill="x", padx=10, pady=2)
-            
-            values = [
-                challan.bill_id,
-                f"{challan.challan_month} {challan.challan_year}",
-                f"Rs. {challan.amount_due:.0f}",
-                f"Rs. {challan.paid_amount:.0f}",
-                f"Rs. {challan.remaining_amount:.0f}",
-                challan.status,
-                challan.due_date.strftime("%Y-%m-%d") if challan.due_date else "N/A"
-            ]
-            
-            for value, width in zip(values, widths):
-                label = ctk.CTkLabel(
-                    row,
-                    text=value,
-                    font=("Arial", 12),
-                    text_color="#333333",
-                    width=width,
-                    anchor="center"
-                )
-                label.pack(side="left", padx=2, pady=5)
-    
     def get_student_info(self):
         """Get student personal information"""
         return {
@@ -333,11 +189,19 @@ class StudentDetailsWindow(ctk.CTkToplevel):
         }
     
     def get_fee_info(self):
-        """Get fee information"""
+        """Get fee information - CALCULATED CORRECTLY"""
+        
+        # Calculate total outstanding correctly: Monthly Fee - Concession
+        total_outstanding = self.student.monthly_tuition_fee - self.student.fee_concession
+        
+        # Prevent negative value
+        if total_outstanding < 0:
+            total_outstanding = 0
+        
         return {
             "Monthly Fee": f"Rs. {self.student.monthly_tuition_fee:,.0f}",
             "Fee Concession": f"Rs. {self.student.fee_concession:,.0f}",
-            "Total Outstanding": f"Rs. {self.student.total_outstanding_amount:,.0f}",
+            "Total Outstanding": f"Rs. {total_outstanding:,.0f}",  # FIXED: calculated correctly
             "Last Payment Date": self.student.last_payment_date.strftime("%Y-%m-%d") if self.student.last_payment_date else "N/A",
             "Last Payment Amount": f"Rs. {self.student.last_payment_amount:,.0f}" if self.student.last_payment_amount else "N/A"
         }

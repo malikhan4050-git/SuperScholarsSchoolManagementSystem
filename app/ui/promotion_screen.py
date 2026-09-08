@@ -7,6 +7,7 @@ from tkinter import messagebox
 from datetime import datetime
 import sys
 import os
+import re
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -82,10 +83,10 @@ class PromotionScreen(ctk.CTkFrame):
         
         self.class_entry = ctk.CTkEntry(
             control_frame,
-            placeholder_text="e.g., 5, 10, Class 10...",
+            placeholder_text="e.g., 5, 10, Class 10, Nursery, KG...",
             font=("Arial", 13),
             height=40,
-            width=200,
+            width=220,
             border_color="#bdc3c7",
             fg_color="#f8f9fa"
         )
@@ -146,7 +147,7 @@ class PromotionScreen(ctk.CTkFrame):
         # Placeholder message
         self.empty_label = ctk.CTkLabel(
             self.scroll_frame,
-            text="Enter a class number and click Search to load students.",
+            text="Enter a class number or name and click Search to load students.",
             font=("Arial", 16),
             text_color="gray"
         )
@@ -193,34 +194,38 @@ class PromotionScreen(ctk.CTkFrame):
             
             if not class_input:
                 print("DEBUG: Empty input")
-                messagebox.showwarning("Warning", "Please enter a class number!")
+                messagebox.showwarning("Warning", "Please enter a class number or name!")
                 return
             
-            import re
-            class_num = ''.join(re.findall(r'\d+', class_input))
-            print(f"DEBUG: Extracted class_num: '{class_num}'")
+            # First try to find exact match
+            self.class_students = self.db.query(Student).filter(Student.class_grade == class_input).all()
+            print(f"DEBUG: Found {len(self.class_students)} students from exact match")
             
-            if not class_num:
-                print("DEBUG: No class number found")
-                messagebox.showwarning("Warning", "Please enter a valid class number!")
-                return
-            
-            class_name = f"Class {class_num}" if not class_input.startswith("Class") else class_input
-            print(f"DEBUG: Searching for class_name: '{class_name}'")
-            
-            # Direct query
-            self.class_students = self.db.query(Student).filter(Student.class_grade == class_name).all()
-            print(f"DEBUG: Found {len(self.class_students)} students from direct query")
-            
+            # If not found, try more flexible search
             if not self.class_students:
-                print("DEBUG: No students from direct query, trying broader search")
+                # Try with "Class" prefix
+                class_name_with_prefix = f"Class {class_input}" if not class_input.lower().startswith("class") else class_input
+                self.class_students = self.db.query(Student).filter(Student.class_grade == class_name_with_prefix).all()
+                print(f"DEBUG: Found {len(self.class_students)} students with 'Class' prefix")
+            
+            # If still not found, try numeric extraction
+            if not self.class_students:
                 all_students = self.db.query(Student).all()
-                self.class_students = [s for s in all_students if class_num in s.class_grade]
-                print(f"DEBUG: Found {len(self.class_students)} students from broader search")
+                class_num = ''.join(re.findall(r'\d+', class_input))
+                if class_num:
+                    self.class_students = [s for s in all_students if class_num in s.class_grade]
+                    print(f"DEBUG: Found {len(self.class_students)} students with number '{class_num}'")
+            
+            # If still not found, try non-numeric partial match (case-insensitive)
+            if not self.class_students:
+                all_students = self.db.query(Student).all()
+                class_normalized = class_input.lower()
+                self.class_students = [s for s in all_students if class_normalized in s.class_grade.lower()]
+                print(f"DEBUG: Found {len(self.class_students)} students with partial match '{class_normalized}'")
             
             if not self.class_students:
                 print("DEBUG: No students found at all")
-                messagebox.showinfo("No Students", f"No students found in {class_name}!")
+                messagebox.showinfo("No Students", f"No students found in '{class_input}'!")
                 self.clear_search()
                 return
             
@@ -244,16 +249,12 @@ class PromotionScreen(ctk.CTkFrame):
         self.student_checkboxes = []
         self.selected_students = []
         
-        # Show header with class info (Without "Class" prefix)
+        # Show header with class info
         if self.class_students:
             class_name = self.class_students[0].class_grade if self.class_students else "Unknown"
-            # Remove "Class" prefix for display
-            import re
-            class_num = ''.join(re.findall(r'\d+', class_name))
-            display_class = class_num if class_num else class_name
             header_label = ctk.CTkLabel(
                 self.scroll_frame,
-                text=f"Students in Class {display_class} ({len(self.class_students)} students)",
+                text=f"Students in {class_name} ({len(self.class_students)} students)",
                 font=("Arial", 18, "bold"),
                 text_color="#1e3a5f"
             )
@@ -274,7 +275,7 @@ class PromotionScreen(ctk.CTkFrame):
             family_id = guardian.family_id if guardian else "N/A"
             
             # Student info
-            info_text = f"{student.full_name} | ID: {student.student_id} | Family: {family_id} | Fee: Rs. {student.monthly_tuition_fee:,.0f}"
+            info_text = f"{student.full_name} | ID: {student.student_id} | Family: {family_id} | Class: {student.class_grade} | Fee: Rs. {student.monthly_tuition_fee:,.0f}"
             
             # Checkbox
             check_var = ctk.BooleanVar(value=True)  # Default to selected
@@ -355,19 +356,11 @@ class PromotionScreen(ctk.CTkFrame):
         # Get next class name
         next_class = self.student_service.get_next_class(current_class)
         
-        # Remove "Class" prefix for display
-        import re
-        current_class_num = ''.join(re.findall(r'\d+', current_class))
-        next_class_num = ''.join(re.findall(r'\d+', next_class))
-        
-        display_current = current_class_num if current_class_num else current_class
-        display_next = next_class_num if next_class_num else next_class
-        
-        # Confirm promotion
+        # Display the promotion info clearly
         confirm_msg = (
             f"Are you sure you want to promote {len(self.selected_students)} student(s)?\n\n"
-            f"Current Class: {display_current}\n"
-            f"Next Class: {display_next}\n\n"
+            f"Current Class: {current_class}\n"
+            f"Next Class: {next_class}\n\n"
             f"Their monthly fee will be updated based on the new class."
         )
         
@@ -390,7 +383,7 @@ class PromotionScreen(ctk.CTkFrame):
         # Show placeholder message
         self.empty_label = ctk.CTkLabel(
             self.scroll_frame,
-            text="Enter a class number and click Search to load students.",
+            text="Enter a class number or name and click Search to load students.",
             font=("Arial", 16),
             text_color="gray"
         )

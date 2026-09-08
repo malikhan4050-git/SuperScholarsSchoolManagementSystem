@@ -15,7 +15,7 @@ from app.utils.id_generator import IDGenerator
 class StudentService:
     """Handle all student-related operations"""
     
-    # Class-Based Fee Structure
+    # Class-Based Fee Structure (numeric classes)
     CLASS_FEE_STRUCTURE = {
         "1": 1500,
         "2": 1500,
@@ -31,23 +31,40 @@ class StudentService:
         "12": 4000,
     }
     
+    # Non-numeric classes fee structure
+    NON_NUMERIC_FEES = {
+        "play group": 1000.0,
+        "playgroup": 1000.0,
+        "nursery": 1200.0,
+        "kg": 1300.0,
+        "kindergarten": 1300.0,
+    }
+    
     def __init__(self, db: Session):
         self.db = db
         self.id_generator = IDGenerator()
     
     def get_fee_for_class(self, class_grade: str) -> float:
         """
-        Get the monthly fee for a specific class
+        Get the monthly fee for a specific class.
+        Handles both numeric classes (5, 10) and non-numeric (Nursery, KG).
         """
-        # Clean the class_grade - extract only numbers
         import re
+        
+        # First, try to extract numeric part (handles "8", "Class 8", "Grade 8")
         class_num = ''.join(re.findall(r'\d+', class_grade))
         
+        # If it's a numeric class, use the CLASS_FEE_STRUCTURE
         if class_num in self.CLASS_FEE_STRUCTURE:
             return self.CLASS_FEE_STRUCTURE[class_num]
-        else:
-            # Default fee if class not in structure
-            return 2000.0
+        
+        # If it's a non-numeric class, check NON_NUMERIC_FEES
+        normalized = class_grade.strip().lower()
+        if normalized in self.NON_NUMERIC_FEES:
+            return self.NON_NUMERIC_FEES[normalized]
+        
+        # Default fee if class not found
+        return 2000.0
     
     def create_student(self, student_data: dict) -> dict:
         """
@@ -276,21 +293,66 @@ class StudentService:
     
     def get_next_class(self, class_grade: str) -> str:
         """
-        Get the next class for promotion - Returns just the number (e.g., "8")
+        Get the next class for promotion.
+        
+        Handles:
+        - Numeric: "5" → "6", "Class 5" → "Class 6", "10" → "11"
+        - Non-numeric: "Play Group" → "Nursery", "Nursery" → "KG", "KG" → "Class 1"
+        
+        Always returns the proper format for the next class.
         """
-        # Clean the class_grade - extract only numbers
         import re
+        
+        # If it's empty, return empty
+        if not class_grade:
+            return class_grade
+        
+        # Check if it's a numeric class (extract number)
         class_num = ''.join(re.findall(r'\d+', class_grade))
         
+        # If numeric, we can promote to next number
         if class_num:
             try:
-                next_class_num = int(class_num) + 1
-                # Return as just the number (e.g., "8")
-                return str(next_class_num)
+                next_num = int(class_num) + 1
+                
+                # Preserve the "Class" prefix if it was there
+                if "class" in class_grade.lower():
+                    return f"Class {next_num}"
+                else:
+                    # If user entered just "5", return "6"
+                    # If user entered "Grade 5", return "Grade 6"
+                    # We'll preserve the prefix pattern
+                    prefix = class_grade[:class_grade.index(class_num)]
+                    return f"{prefix}{next_num}"
             except:
                 return class_grade
-        else:
-            return class_grade
+        
+        # Non-numeric classes progression
+        progression = {
+            "play group": "Nursery",
+            "playgroup": "Nursery",
+            "nursery": "KG",
+            "kg": "Class 1",
+            "kindergarten": "Class 1",
+            "k.g": "Class 1",
+            "k.g.": "Class 1",
+            "class 1": "Class 2",
+            "class 2": "Class 3",
+            "class 3": "Class 4",
+            "class 4": "Class 5",
+            "class 5": "Class 6",
+            "class 6": "Class 7",
+            "class 7": "Class 8",
+            "class 8": "Class 9",
+            "class 9": "Class 10",
+        }
+        
+        normalized = class_grade.strip().lower()
+        if normalized in progression:
+            return progression[normalized]
+        
+        # If we can't determine next class, return the same
+        return class_grade
     
     def promote_students(self, student_ids: list, current_class: str) -> dict:
         """

@@ -22,7 +22,7 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         
         # Configure window
         self.title("Student Registration - Super Scholars")
-        self.geometry("1000x800")
+        self.geometry("1000x850")
         self.resizable(True, True)
         
         # Set theme
@@ -259,13 +259,18 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         
         # Row 1 - Admission Date and Class (Date placeholder changed)
         self.create_input_row(grid_frame, "Admission Date", "admission_date", 0, 0, required=True, placeholder="YYYY-MM-DD")
-        self.create_input_row(grid_frame, "Class/Grade", "class_grade", 0, 1, required=True)
+        
+        # Class/Grade - THIS WILL TRIGGER FEE AUTO-CALCULATION
+        class_entry = self.create_input_row(grid_frame, "Class/Grade", "class_grade", 0, 1, required=True, placeholder="e.g., 5, Class 5, Nursery, KG")
+        
+        # Bind the class entry to update fee display when user types
+        class_entry.bind("<KeyRelease>", self.update_fee_preview)
         
         # Row 2 - Section
         self.create_input_row(grid_frame, "Section", "section", 1, 0)
     
     def create_fee_info_section(self):
-        """Create fee information section - ONLY Fee Concession (Monthly Fee auto-populated)"""
+        """Create fee information section - WITH LIVE FEE PREVIEW"""
         
         self.create_section_header(self.form_scroll, "Fee Information")
         
@@ -277,8 +282,76 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         grid_frame.grid_columnconfigure(0, weight=1)
         grid_frame.grid_columnconfigure(1, weight=1)
         
-        # Row 1 - ONLY Fee Concession
+        # Row 1 - Fee Concession
         self.create_input_row(grid_frame, "Fee Concession", "fee_concession", 0, 0)
+        
+        # Row 2 - Monthly Fee (Auto-calculated Display - LIVE)
+        fee_label = ctk.CTkLabel(
+            grid_frame,
+            text="Monthly Fee (Auto-calculated):",
+            font=("Arial", 13, "bold"),
+            text_color="#1e3a5f"
+        )
+        fee_label.grid(row=1, column=0, padx=10, pady=8, sticky="w")
+        
+        self.monthly_fee_display = ctk.CTkLabel(
+            grid_frame,
+            text="Rs. 0",
+            font=("Arial", 16, "bold"),
+            text_color="#2ecc71"
+        )
+        self.monthly_fee_display.grid(row=1, column=1, padx=10, pady=8, sticky="e")
+        
+        # Row 3 - Net Fee (After Concession) - Display
+        net_fee_label = ctk.CTkLabel(
+            grid_frame,
+            text="Net Fee (After Concession):",
+            font=("Arial", 13, "bold"),
+            text_color="#e74c3c"
+        )
+        net_fee_label.grid(row=2, column=0, padx=10, pady=8, sticky="w")
+        
+        self.net_fee_display = ctk.CTkLabel(
+            grid_frame,
+            text="Rs. 0",
+            font=("Arial", 16, "bold"),
+            text_color="#e74c3c"
+        )
+        self.net_fee_display.grid(row=2, column=1, padx=10, pady=8, sticky="e")
+        
+        # Bind concession entry to update net fee when user types
+        self.form_entries['fee_concession'].bind("<KeyRelease>", self.update_fee_preview)
+    
+    def update_fee_preview(self, event=None):
+        """Update the fee preview based on class and concession"""
+        
+        # Get class grade
+        class_entry = self.form_entries.get('class_grade', None)
+        class_grade = class_entry.get().strip() if class_entry else ""
+        
+        # Get concession
+        concession_entry = self.form_entries.get('fee_concession', None)
+        try:
+            concession = float(concession_entry.get()) if concession_entry.get() else 0.0
+        except ValueError:
+            concession = 0.0
+        
+        # Calculate monthly fee based on class
+        if class_grade:
+            monthly_fee = self.student_service.get_fee_for_class(class_grade)
+        else:
+            monthly_fee = 0
+        
+        # Update monthly fee display
+        self.monthly_fee_display.configure(text=f"Rs. {monthly_fee:,.0f}")
+        
+        # Calculate net fee (monthly fee - concession)
+        net_fee = monthly_fee - concession
+        if net_fee < 0:
+            net_fee = 0
+        
+        # Update net fee display
+        self.net_fee_display.configure(text=f"Rs. {net_fee:,.0f}")
     
     def create_footer(self):
         """Create footer with action buttons"""
@@ -368,15 +441,19 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         self.form_entries['class_grade'].insert(0, student.class_grade)
         self.form_entries['section'].insert(0, student.section or "")
         
-        # Pre-fill fee information (Monthly Fee is NOT shown anymore, so don't fill it)
-        # Only fill Fee Concession
+        # Pre-fill fee information
         self.form_entries['fee_concession'].insert(0, str(student.fee_concession or 0))
+        
+        # Update fee preview
+        self.update_fee_preview()
     
     def clear_form(self):
         """Clear all form fields"""
         if messagebox.askyesno("Confirm", "Are you sure you want to clear all fields?"):
             for entry in self.form_entries.values():
                 entry.delete(0, "end")
+            self.monthly_fee_display.configure(text="Rs. 0")
+            self.net_fee_display.configure(text="Rs. 0")
     
     def validate_cnic(self, cnic):
         """Validate CNIC format: 12345-6789987-6"""
@@ -486,7 +563,8 @@ class StudentRegistrationForm(ctk.CTkToplevel):
                 messagebox.showinfo("Success", 
                     f"Student created successfully!\n\n"
                     f"Student ID: {result['student_id']}\n"
-                    f"Family ID: {result['family_id']}")
+                    f"Family ID: {result['family_id']}\n"
+                    f"Monthly Fee: Rs. {result['monthly_fee']:,.0f}")
                 self.destroy()
             else:
                 messagebox.showerror("Error", result["message"])
