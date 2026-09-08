@@ -247,12 +247,12 @@ class FeeService:
             if challan_year_num < current_year_num:
                 # Previous years - all unpaid challans count (remaining_amount)
                 if not challan.is_paid:
-                    total_outstanding += challan.remaining_amount  # FIXED: was challan.exact_payable
+                    total_outstanding += challan.remaining_amount  # FIXED: was exact_payable
             elif challan_year_num == current_year_num:
                 # Same year - only count months BEFORE current month
                 if challan_month_num < current_month_num:
                     if not challan.is_paid:
-                        total_outstanding += challan.remaining_amount  # FIXED: was challan.exact_payable
+                        total_outstanding += challan.remaining_amount  # FIXED: was exact_payable
         
         return total_outstanding
     

@@ -418,14 +418,14 @@ class FeeChallanlScreen(ctk.CTkFrame):
                 family_id = challan.family_id
                 if family_id not in self.arrears_cache:
                     self.arrears_cache[family_id] = 0
-                self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was challan.exact_payable
+                self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was exact_payable
             elif challan_year_num == current_year_num:
                 # Same year - only count months BEFORE current month
                 if challan_month_num < current_month_num:
                     family_id = challan.family_id
                     if family_id not in self.arrears_cache:
                         self.arrears_cache[family_id] = 0
-                    self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was challan.exact_payable
+                    self.arrears_cache[family_id] += challan.remaining_amount  # FIXED: was exact_payable
     
     def load_families_data(self):
         """Load all families with students from database"""
