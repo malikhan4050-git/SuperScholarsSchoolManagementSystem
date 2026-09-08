@@ -11,7 +11,7 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app.database.models import SessionLocal, Student, Teacher, FeeRecord, FeeStatus, Guardian
+from app.database.models import SessionLocal, Student, Teacher, FeeRecord, FeeStatus, Guardian, FeeChallan
 from app.utils.auth import Authentication
 from app.services.student_service import StudentService
 from app.services.fee_service import FeeService
@@ -461,27 +461,76 @@ class AdminDashboard(ctk.CTk):
             self.refresh_students_list()
     
     def view_student(self, student_id):
-        """View student details"""
-        # Simplified for now - will implement full view later
+        """View student details in a professional popup"""
         student = self.student_service.get_student_by_id(student_id)
-        if student:
-            guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
-            family_id = guardian.family_id if guardian else "N/A"
-            
-            messagebox.showinfo("Student Details", 
-                f"Name: {student.full_name}\n"
-                f"ID: {student.student_id}\n"
-                f"Family ID: {family_id}\n"
-                f"Class: {student.class_grade}\n"
-                f"Monthly Fee: Rs. {student.monthly_tuition_fee:,.0f}\n"
-                f"Concession: Rs. {student.fee_concession:,.0f}")
+        if not student:
+            messagebox.showerror("Error", "Student not found!")
+            return
+        
+        # Get guardian
+        guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
+        family_id = guardian.family_id if guardian else "N/A"
+        
+        # Get fee records for this student
+        fee_records = self.db.query(FeeRecord).filter(FeeRecord.student_id == student.id).all()
+        
+        # Get challans for this family
+        challans = self.db.query(FeeChallan).filter(FeeChallan.family_id == family_id).all()
+        
+        # Build details message
+        details = f"📋 STUDENT DETAILS\n"
+        details += "=" * 40 + "\n\n"
+        details += f"👤 Name: {student.first_name} {student.last_name}\n"
+        details += f"🆔 Student ID: {student.student_id}\n"
+        details += f"🏠 Family ID: {family_id}\n"
+        details += f"📅 Date of Birth: {student.date_of_birth.strftime('%Y-%m-%d')}\n"
+        details += f"⚧ Gender: {student.gender.value}\n"
+        details += f"📚 Class: {student.class_grade}\n"
+        details += f"🏫 Section: {student.section or 'N/A'}\n\n"
+        
+        if guardian:
+            details += f"👨‍👩‍👧 Guardian: {guardian.guardian_name}\n"
+            details += f"📱 Mobile: {guardian.mobile_number}\n"
+            details += f"📧 Email: {guardian.email or 'N/A'}\n"
+            details += f"🏠 Address: {guardian.address or 'N/A'}\n\n"
+        
+        details += f"💰 Monthly Fee: Rs. {student.monthly_tuition_fee:,.0f}\n"
+        details += f"💸 Concession: Rs. {student.fee_concession:,.0f}\n"
+        details += f"💵 Total Outstanding: Rs. {student.total_outstanding_amount:,.0f}\n\n"
+        
+        details += f"📄 Total Fee Records: {len(fee_records)}\n"
+        details += f"📄 Total Challans: {len(challans)}\n\n"
+        
+        # Show details
+        messagebox.showinfo("Student Details", details)
     
     def delete_student(self, student_id):
-        """Delete a student"""
-        if messagebox.askyesno("Confirm", "Are you sure you want to delete this student?"):
+        """Delete a student with proper confirmation"""
+        student = self.student_service.get_student_by_id(student_id)
+        if not student:
+            messagebox.showerror("Error", "Student not found!")
+            return
+        
+        # Get guardian for context
+        guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
+        family_id = guardian.family_id if guardian else "N/A"
+        
+        # Confirm deletion
+        confirm_msg = (
+            f"Are you sure you want to delete this student?\n\n"
+            f"Student: {student.full_name}\n"
+            f"ID: {student.student_id}\n"
+            f"Family: {family_id}\n"
+            f"Class: {student.class_grade}\n\n"
+            f"⚠️ This will also delete:\n"
+            f"• All fee records for this student\n"
+            f"• All challans for this family\n"
+        )
+        
+        if messagebox.askyesno("Confirm Deletion", confirm_msg, icon="warning"):
             result = self.student_service.delete_student(student_id)
             if result["success"]:
-                messagebox.showinfo("Success", "Student deleted successfully!")
+                messagebox.showinfo("Success", result["message"])
                 self.refresh_students_list()
             else:
                 messagebox.showerror("Error", result["message"])

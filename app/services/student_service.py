@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app.database.models import Student, Guardian, Gender, StudentStatus, FeeStatus
+from app.database.models import Student, Guardian, Gender, StudentStatus, FeeStatus, FeeRecord, FeeChallan
 from app.utils.id_generator import IDGenerator
 
 class StudentService:
@@ -216,6 +216,9 @@ class StudentService:
     def delete_student(self, student_id: int) -> dict:
         """
         Delete a student
+        - Deletes the student record
+        - Deletes FeeChallans for this family (but keeps FeeRecords for audit)
+        - Does NOT delete FeeRecords (payment history)
         """
         try:
             student = self.get_student_by_id(student_id)
@@ -223,10 +226,32 @@ class StudentService:
             if not student:
                 return {"success": False, "message": "Student not found!"}
             
+            # Get guardian ID before deleting student
+            guardian_id = student.guardian_id
+            
+            # Get the guardian for this student
+            guardian = self.db.query(Guardian).filter(Guardian.id == guardian_id).first()
+            
+            # Delete FeeChallans for this family (if guardian exists)
+            if guardian:
+                challans = self.db.query(FeeChallan).filter(FeeChallan.family_id == guardian.family_id).all()
+                for challan in challans:
+                    self.db.delete(challan)
+            
+            # Delete the student
             self.db.delete(student)
             self.db.commit()
             
-            return {"success": True, "message": "Student deleted successfully!"}
+            # Check if this was the last student for this guardian
+            remaining_students = self.db.query(Student).filter(Student.guardian_id == guardian_id).count()
+            
+            # If no more students for this guardian, delete the guardian
+            if remaining_students == 0:
+                if guardian:
+                    self.db.delete(guardian)
+                    self.db.commit()
+            
+            return {"success": True, "message": "Student deleted successfully! (Payment records preserved)"}
             
         except Exception as e:
             self.db.rollback()
