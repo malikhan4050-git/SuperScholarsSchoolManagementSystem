@@ -461,48 +461,9 @@ class AdminDashboard(ctk.CTk):
             self.refresh_students_list()
     
     def view_student(self, student_id):
-        """View student details in a professional popup"""
-        student = self.student_service.get_student_by_id(student_id)
-        if not student:
-            messagebox.showerror("Error", "Student not found!")
-            return
-        
-        # Get guardian
-        guardian = self.db.query(Guardian).filter(Guardian.id == student.guardian_id).first()
-        family_id = guardian.family_id if guardian else "N/A"
-        
-        # Get fee records for this student
-        fee_records = self.db.query(FeeRecord).filter(FeeRecord.student_id == student.id).all()
-        
-        # Get challans for this family
-        challans = self.db.query(FeeChallan).filter(FeeChallan.family_id == family_id).all()
-        
-        # Build details message
-        details = f"📋 STUDENT DETAILS\n"
-        details += "=" * 40 + "\n\n"
-        details += f"👤 Name: {student.first_name} {student.last_name}\n"
-        details += f"🆔 Student ID: {student.student_id}\n"
-        details += f"🏠 Family ID: {family_id}\n"
-        details += f"📅 Date of Birth: {student.date_of_birth.strftime('%Y-%m-%d')}\n"
-        details += f"⚧ Gender: {student.gender.value}\n"
-        details += f"📚 Class: {student.class_grade}\n"
-        details += f"🏫 Section: {student.section or 'N/A'}\n\n"
-        
-        if guardian:
-            details += f"👨‍👩‍👧 Guardian: {guardian.guardian_name}\n"
-            details += f"📱 Mobile: {guardian.mobile_number}\n"
-            details += f"📧 Email: {guardian.email or 'N/A'}\n"
-            details += f"🏠 Address: {guardian.address or 'N/A'}\n\n"
-        
-        details += f"💰 Monthly Fee: Rs. {student.monthly_tuition_fee:,.0f}\n"
-        details += f"💸 Concession: Rs. {student.fee_concession:,.0f}\n"
-        details += f"💵 Total Outstanding: Rs. {student.total_outstanding_amount:,.0f}\n\n"
-        
-        details += f"📄 Total Fee Records: {len(fee_records)}\n"
-        details += f"📄 Total Challans: {len(challans)}\n\n"
-        
-        # Show details
-        messagebox.showinfo("Student Details", details)
+        """View student details in a full screen window"""
+        from app.ui.student_details_screen import StudentDetailsWindow
+        StudentDetailsWindow(self, student_id, self.db)
     
     def delete_student(self, student_id):
         """Delete a student with proper confirmation"""

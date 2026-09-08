@@ -143,7 +143,7 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         )
         section_label.pack(side="left", padx=20, pady=10)
     
-    def create_input_row(self, parent, label_text, field_name, row, column=0, required=False):
+    def create_input_row(self, parent, label_text, field_name, row, column=0, required=False, placeholder=None):
         """Create a labeled input row in grid layout"""
         
         # Create frame for the input
@@ -168,14 +168,17 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         )
         label.grid(row=0, column=0, padx=(10, 5), sticky="w")
         
-        # Entry
+        # Entry with custom placeholder
+        if placeholder is None:
+            placeholder = f"Enter {label_text.lower()}..."
+        
         entry = ctk.CTkEntry(
             input_frame,
             height=38,
             font=("Arial", 13),
             border_color="#bdc3c7",
             fg_color="#f8f9fa",
-            placeholder_text=f"Enter {label_text.lower()}..."
+            placeholder_text=placeholder
         )
         entry.grid(row=0, column=1, padx=(5, 10), sticky="ew")
         
@@ -201,12 +204,12 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         self.create_input_row(grid_frame, "First Name", "first_name", 0, 0, required=True)
         self.create_input_row(grid_frame, "Last Name", "last_name", 0, 1, required=True)
         
-        # Row 2 - DOB and Gender
-        self.create_input_row(grid_frame, "Date of Birth", "dob", 1, 0, required=True)
+        # Row 2 - DOB and Gender (Date placeholder changed)
+        self.create_input_row(grid_frame, "Date of Birth", "dob", 1, 0, required=True, placeholder="YYYY-MM-DD")
         self.create_input_row(grid_frame, "Gender", "gender", 1, 1, required=True)
         
-        # Row 3 - CNIC/B-Form
-        self.create_input_row(grid_frame, "CNIC/B-Form", "cnic", 2, 0)
+        # Row 3 - CNIC/B-Form with format placeholder
+        self.create_input_row(grid_frame, "CNIC/B-Form", "cnic", 2, 0, placeholder="12345-6789987-6")
     
     def create_guardian_info_section(self):
         """Create guardian information section"""
@@ -221,12 +224,12 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         grid_frame.grid_columnconfigure(0, weight=1)
         grid_frame.grid_columnconfigure(1, weight=1)
         
-        # Row 1 - Guardian Name and CNIC
+        # Row 1 - Guardian Name and CNIC with format placeholder
         self.create_input_row(grid_frame, "Guardian Name", "guardian_name", 0, 0, required=True)
-        self.create_input_row(grid_frame, "Guardian CNIC", "guardian_cnic", 0, 1, required=True)
+        self.create_input_row(grid_frame, "Guardian CNIC", "guardian_cnic", 0, 1, required=True, placeholder="12345-6789987-6")
         
         # Row 2 - Guardian contact details
-        self.create_input_row(grid_frame, "Mobile Number", "mobile", 1, 0, required=True)
+        self.create_input_row(grid_frame, "Mobile Number", "mobile", 1, 0, required=True, placeholder="03XX-XXXXXXX")
         self.create_input_row(grid_frame, "Email", "email", 1, 1)
 
         # Row 3 - Guardian addresses
@@ -238,8 +241,8 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         self.create_input_row(grid_frame, "Monthly Income", "guardian_income", 3, 1)
 
         # Row 5 - Emergency Contact Name and Number
-        self.create_input_row(grid_frame, "Emergency Name", "emergency_name", 4, 0)
-        self.create_input_row(grid_frame, "Emergency Phone", "emergency_phone", 4, 1)
+        self.create_input_row(grid_frame, "Emergency Contact Name", "emergency_name", 4, 0)
+        self.create_input_row(grid_frame, "Emergency Phone", "emergency_phone", 4, 1, placeholder="03XX-XXXXXXX")
     
     def create_academic_info_section(self):
         """Create academic information section"""
@@ -254,15 +257,15 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         grid_frame.grid_columnconfigure(0, weight=1)
         grid_frame.grid_columnconfigure(1, weight=1)
         
-        # Row 1 - Admission Date and Class
-        self.create_input_row(grid_frame, "Admission Date", "admission_date", 0, 0, required=True)
+        # Row 1 - Admission Date and Class (Date placeholder changed)
+        self.create_input_row(grid_frame, "Admission Date", "admission_date", 0, 0, required=True, placeholder="YYYY-MM-DD")
         self.create_input_row(grid_frame, "Class/Grade", "class_grade", 0, 1, required=True)
         
         # Row 2 - Section
         self.create_input_row(grid_frame, "Section", "section", 1, 0)
     
     def create_fee_info_section(self):
-        """Create fee information section - Monthly Fee + Fee Concession"""
+        """Create fee information section - ONLY Fee Concession (Monthly Fee auto-populated)"""
         
         self.create_section_header(self.form_scroll, "Fee Information")
         
@@ -274,11 +277,8 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         grid_frame.grid_columnconfigure(0, weight=1)
         grid_frame.grid_columnconfigure(1, weight=1)
         
-        # Row 1 - Monthly Fee
-        self.create_input_row(grid_frame, "Monthly Fee", "monthly_fee", 0, 0, required=True)
-        
-        # Row 2 - Fee Concession
-        self.create_input_row(grid_frame, "Fee Concession", "fee_concession", 1, 0)
+        # Row 1 - ONLY Fee Concession
+        self.create_input_row(grid_frame, "Fee Concession", "fee_concession", 0, 0)
     
     def create_footer(self):
         """Create footer with action buttons"""
@@ -368,8 +368,8 @@ class StudentRegistrationForm(ctk.CTkToplevel):
         self.form_entries['class_grade'].insert(0, student.class_grade)
         self.form_entries['section'].insert(0, student.section or "")
         
-        # Pre-fill fee information
-        self.form_entries['monthly_fee'].insert(0, str(student.monthly_tuition_fee))
+        # Pre-fill fee information (Monthly Fee is NOT shown anymore, so don't fill it)
+        # Only fill Fee Concession
         self.form_entries['fee_concession'].insert(0, str(student.fee_concession or 0))
     
     def clear_form(self):
@@ -378,23 +378,98 @@ class StudentRegistrationForm(ctk.CTkToplevel):
             for entry in self.form_entries.values():
                 entry.delete(0, "end")
     
+    def validate_cnic(self, cnic):
+        """Validate CNIC format: 12345-6789987-6"""
+        import re
+        pattern = r'^\d{5}-\d{7}-\d$'
+        return bool(re.match(pattern, cnic))
+    
+    def validate_mobile(self, mobile):
+        """Validate Mobile format: 03XX-XXXXXXX"""
+        import re
+        pattern = r'^03\d{2}-\d{7}$'
+        return bool(re.match(pattern, mobile))
+    
+    def validate_email(self, email):
+        """Basic email validation"""
+        import re
+        pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+        return bool(re.match(pattern, email))
+    
+    def validate_date(self, date_str):
+        """Validate date format: YYYY-MM-DD"""
+        try:
+            datetime.strptime(date_str, "%Y-%m-%d")
+            return True
+        except ValueError:
+            return False
+    
     def submit_form(self):
-        """Submit the form - Create or Update student"""
+        """Submit the form - Create or Update student with validation"""
         
         # Validate required fields
         required_fields = ['first_name', 'last_name', 'dob', 'gender', 'guardian_name', 
                           'guardian_cnic', 'mobile', 'admission_date', 
-                          'class_grade', 'monthly_fee']
+                          'class_grade']
         
         for field in required_fields:
             if field not in self.form_entries or not self.form_entries[field].get().strip():
-                messagebox.showwarning("Warning", f"Please fill all required fields!")
+                messagebox.showwarning("Warning", "Please fill all required fields!")
                 return
+        
+        # Validate date fields
+        if not self.validate_date(self.form_entries['dob'].get().strip()):
+            messagebox.showerror("Invalid Date", "Date of Birth must be in format YYYY-MM-DD")
+            return
+        
+        if not self.validate_date(self.form_entries['admission_date'].get().strip()):
+            messagebox.showerror("Invalid Date", "Admission Date must be in format YYYY-MM-DD")
+            return
+        
+        # Validate CNIC fields (if provided)
+        cnic = self.form_entries['cnic'].get().strip()
+        if cnic and not self.validate_cnic(cnic):
+            messagebox.showerror("Invalid CNIC", 
+                "Student CNIC/B-Form must be in format: 12345-6789987-6\n\n"
+                "Example: 12345-1234567-1")
+            return
+        
+        guardian_cnic = self.form_entries['guardian_cnic'].get().strip()
+        if guardian_cnic and not self.validate_cnic(guardian_cnic):
+            messagebox.showerror("Invalid CNIC", 
+                "Guardian CNIC must be in format: 12345-6789987-6\n\n"
+                "Example: 12345-1234567-1")
+            return
+        
+        # Validate mobile number fields (if provided)
+        mobile = self.form_entries['mobile'].get().strip()
+        if not self.validate_mobile(mobile):
+            messagebox.showerror("Invalid Mobile Number",
+                "Mobile Number must be in format: 03XX-XXXXXXX\n\n"
+                "Example: 0300-1234567")
+            return
+        
+        emergency_phone = self.form_entries['emergency_phone'].get().strip()
+        if emergency_phone and not self.validate_mobile(emergency_phone):
+            messagebox.showerror("Invalid Mobile Number",
+                "Emergency Phone must be in format: 03XX-XXXXXXX\n\n"
+                "Example: 0301-7654321")
+            return
+        
+        # Validate email (if provided)
+        email = self.form_entries['email'].get().strip()
+        if email and not self.validate_email(email):
+            messagebox.showerror("Invalid Email", "Please enter a valid email address!")
+            return
         
         # Gather data
         student_data = {}
         for field, entry in self.form_entries.items():
             student_data[field] = entry.get().strip()
+        
+        # If monthly_fee is not in student_data, it will be auto-populated in the service
+        if 'monthly_fee' not in student_data or not student_data['monthly_fee']:
+            student_data['monthly_fee'] = '0'  # Will be auto-calculated in create_student()
         
         if self.is_edit_mode:
             # Update existing student
