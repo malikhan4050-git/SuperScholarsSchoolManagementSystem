@@ -35,6 +35,9 @@ class LoginWindow(ctk.CTk):
         self.db = SessionLocal()
         self.auth = Authentication(self.db)
         
+        # Handle window close event
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
         # Create UI
         self.create_widgets()
         
@@ -60,7 +63,7 @@ class LoginWindow(ctk.CTk):
             self,
             width=400,
             corner_radius=0,
-            fg_color="#1e3a5f"  # Dark blue
+            fg_color="#1e3a5f"
         )
         self.left_panel.grid(row=0, column=0, sticky="nsew")
         
@@ -233,23 +236,37 @@ class LoginWindow(ctk.CTk):
     def open_dashboard(self, role, user):
         """Open the appropriate dashboard based on role"""
         
+        # Close login window
         self.destroy()
         
-        # Import dashboard based on role
-        if role == "super_admin":
-            from app.ui.super_admin_dashboard import SuperAdminDashboard
-            dashboard = SuperAdminDashboard(user)
-        elif role == "admin":
-            from app.ui.admin_dashboard import AdminDashboard
-            dashboard = AdminDashboard(user)
-        elif role == "principal":
-            from app.ui.principal_dashboard import PrincipalDashboard
-            dashboard = PrincipalDashboard(user)
-        else:
-            messagebox.showerror("Error", "Invalid role!")
-            return
-        
-        dashboard.mainloop()
+        try:
+            # Import dashboard based on role
+            if role == "super_admin":
+                from app.ui.super_admin_dashboard import SuperAdminDashboard
+                dashboard = SuperAdminDashboard(user)
+            elif role == "admin":
+                from app.ui.admin_dashboard import AdminDashboard
+                dashboard = AdminDashboard(user)
+            elif role == "principal":
+                from app.ui.principal.principal_dashboard import PrincipalDashboard
+                dashboard = PrincipalDashboard(user)
+            else:
+                messagebox.showerror("Error", "Invalid role!")
+                return
+            
+            dashboard.mainloop()
+            
+        except ImportError as e:
+            messagebox.showerror(
+                "Import Error",
+                f"Failed to load dashboard: {str(e)}\n\n"
+                f"Please check that all required files exist."
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Dashboard Error",
+                f"Failed to open dashboard: {str(e)}"
+            )
     
     def on_closing(self):
         """Handle window close event"""

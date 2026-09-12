@@ -171,7 +171,7 @@ class FeeChallanlScreen(ctk.CTkFrame):
         # New order: Checkbox, Family ID, Students, Student IDs, YEAR, MONTH, Monthly Fee, Concession, Arrears, Admission, Registration, EXAM, Transport, Other, Total
         self.col_widths = [60, 140, 220, 200, 100, 120, 130, 110, 120, 100, 110, 100, 110, 100, 120]
         self.headers = ["✓", "Family ID", "Student(s)", "Student ID(s)", "Year", "Month",
-                       "Monthly Fee", "Concession", "Arrears", "Admission", 
+                       "Monthly Fee", "Concession", "Arrear", "Admission", 
                        "Registration", "Exam", "Transport", "Other", "Total for Month"]
         
         # Create header row
