@@ -1,5 +1,6 @@
 """
-Window Manager - Handles full-screen maximization and centering
+Window Manager - Cross-platform window sizing and centering
+Measures screen resolution and sizes windows to fit perfectly (100% full screen)
 Works on both Windows and Linux
 """
 
@@ -7,45 +8,51 @@ import tkinter as tk
 import sys
 
 
-def maximize_window(window):
+def get_screen_dimensions(window):
     """
-    Maximize a window to fill the ENTIRE screen (100% full screen)
-    Works on both Windows and Linux
+    Get the actual usable screen dimensions.
+    Returns (screen_width, screen_height)
+    """
+    window.update_idletasks()
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    return screen_width, screen_height
+
+
+def fit_window_fullscreen(window):
+    """
+    Size window to 100% of screen and position at top-left (0,0).
+    This fills the entire screen without using OS maximize/minimize.
     
-    Args:
-        window: The tkinter/customtkinter window to maximize
+    Works on both Windows and Linux - uses pure geometry() calls.
     """
     window.update_idletasks()
     
-    # Get screen dimensions
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
     
-    # On Windows, use the zoomed state for true maximization
-    if sys.platform.startswith('win'):
-        try:
-            window.state('zoomed')
-            return
-        except:
-            pass
-    
-    # Fallback: Set geometry to full screen (works on Linux)
+    # Set geometry to fill entire screen at top-left
     window.geometry(f"{screen_width}x{screen_height}+0+0")
     
-    # On Linux, we might need to wait for the window to be ready
-    window.after(50, lambda: window.geometry(f"{screen_width}x{screen_height}+0+0"))
-    window.after(200, lambda: window.geometry(f"{screen_width}x{screen_height}+0+0"))
-    window.after(500, lambda: window.geometry(f"{screen_width}x{screen_height}+0+0"))
+    window.update_idletasks()
 
 
-def center_window(window, width=None, height=None):
+def apply_fullscreen(window):
     """
-    Center a window on the screen (works on Windows and Linux)
+    Apply fullscreen sizing with multiple safety delays.
+    Call this AFTER the window has been created.
     
-    Args:
-        window: The tkinter/customtkinter window to center
-        width: Optional width (if not set, uses current window width)
-        height: Optional height (if not set, uses current window height)
+    Fires 3 times to ensure it sticks on both Windows and Linux.
+    """
+    window.after(10, lambda: fit_window_fullscreen(window))
+    window.after(100, lambda: fit_window_fullscreen(window))
+    window.after(300, lambda: fit_window_fullscreen(window))
+
+
+def center_window_to_screen(window, width=None, height=None):
+    """
+    Center a window at a specific size (or its current size).
+    Used for dialogs and smaller windows.
     """
     window.update_idletasks()
     
@@ -61,6 +68,14 @@ def center_window(window, width=None, height=None):
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
     
+    max_width = int(screen_width * 0.95)
+    max_height = int(screen_height * 0.95)
+    
+    if width > max_width:
+        width = max_width
+    if height > max_height:
+        height = max_height
+    
     x = (screen_width - width) // 2
     y = (screen_height - height) // 2
     
@@ -70,38 +85,27 @@ def center_window(window, width=None, height=None):
     window.geometry(f"{width}x{height}+{x}+{y}")
 
 
-def maximize_and_center(window):
+def center_dialog(window, width, height):
     """
-    Maximize a window to 100% full screen AND ensure it's centered
-    This is the main function to use for all main windows
+    Center a dialog window (Toplevel) with fixed size.
     """
-    # First, maximize the window
-    maximize_window(window)
+    window.update_idletasks()
     
-    # Then, ensure it's centered (for Linux fallback)
-    window.after(100, lambda: center_window(window))
-    window.after(300, lambda: center_window(window))
-    window.after(600, lambda: center_window(window))
-
-
-def set_fullscreen(window):
-    """
-    Set a window to TRUE fullscreen (no title bar, no taskbar)
-    Use this only if you want a true kiosk-style fullscreen
-    """
-    window.attributes('-fullscreen', True)
-
-
-def set_maximized(window):
-    """
-    Set a window to maximized state (with title bar and taskbar visible)
-    This is the standard "maximize" button behavior
-    """
-    if sys.platform.startswith('win'):
-        window.state('zoomed')
-    else:
-        # Linux fallback
-        window.update_idletasks()
-        screen_width = window.winfo_screenwidth()
-        screen_height = window.winfo_screenheight()
-        window.geometry(f"{screen_width}x{screen_height}+0+0")
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    
+    max_width = int(screen_width * 0.95)
+    max_height = int(screen_height * 0.95)
+    
+    if width > max_width:
+        width = max_width
+    if height > max_height:
+        height = max_height
+    
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    
+    x = max(0, min(x, screen_width - width))
+    y = max(0, min(y, screen_height - height))
+    
+    window.geometry(f"{width}x{height}+{x}+{y}")
