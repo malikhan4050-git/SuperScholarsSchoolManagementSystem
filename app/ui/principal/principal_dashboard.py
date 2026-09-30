@@ -16,6 +16,7 @@ from app.utils.auth import Authentication
 from app.ui.principal.principal_students import PrincipalStudentsView
 from app.ui.principal.principal_fees import PrincipalFeesView
 from app.ui.principal.principal_reports import PrincipalReportsView
+from app.utils.window_manager import apply_fullscreen
 
 class PrincipalDashboard(ctk.CTk):
     """Principal Dashboard Class - View Only Access"""
@@ -28,11 +29,13 @@ class PrincipalDashboard(ctk.CTk):
         
         # Configure window
         self.title("Super Scholars - Principal Dashboard")
-        self.geometry("1400x800")
         
         # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
+        
+        # Apply fullscreen sizing
+        apply_fullscreen(self)
         
         # Initialize database
         self.db = SessionLocal()
@@ -157,40 +160,53 @@ class PrincipalDashboard(ctk.CTk):
         """Show dashboard view"""
         self.clear_main_content()
         
-        # Create dashboard view
-        dashboard_view = ctk.CTkFrame(self.main_content, fg_color="#f0f2f5")
-        dashboard_view.pack(fill="both", expand=True)
-        
-        # Header
+        # ===== HEADER =====
         self.header_frame = ctk.CTkFrame(
-            dashboard_view,
-            height=100,
+            self.main_content,
+            height=80,
             fg_color="white",
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
             text="Dashboard Overview",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 26, "bold"),
             text_color="#1e3a5f"
         )
-        self.header_title.pack(side="left", padx=30, pady=30)
+        self.header_title.pack(side="left", padx=30, pady=25)
         
-        # Stats cards
-        self.stats_frame = ctk.CTkFrame(
-            dashboard_view,
-            fg_color="transparent"
+        # ===== WELCOME SECTION =====
+        welcome_frame = ctk.CTkFrame(
+            self.main_content,
+            fg_color="white",
+            corner_radius=15
         )
-        self.stats_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        welcome_frame.pack(fill="x", padx=25, pady=(15, 10))
         
-        # Get actual stats
+        welcome_title = ctk.CTkLabel(
+            welcome_frame,
+            text=f"Welcome back, {self.current_user.full_name}!",
+            font=("Arial", 20, "bold"),
+            text_color="#1e3a5f"
+        )
+        welcome_title.pack(anchor="w", padx=25, pady=(20, 5))
+        
+        welcome_subtitle = ctk.CTkLabel(
+            welcome_frame,
+            text="Here's an overview of your school's current status",
+            font=("Arial", 13),
+            text_color="#7f8c8d"
+        )
+        welcome_subtitle.pack(anchor="w", padx=25, pady=(0, 20))
+        
+        # ===== STATS SECTION =====
         total_students = self.db.query(Student).count()
         total_families = self.db.query(Guardian).count()
         total_teachers = self.db.query(Teacher).count()
         
-        # Calculate from FeeChallan
         total_collected = self.db.query(FeeChallan).with_entities(
             func.sum(FeeChallan.paid_amount)
         ).scalar() or 0
@@ -204,43 +220,119 @@ class PrincipalDashboard(ctk.CTk):
         ).count()
         
         stats = [
-            ("Total Students", total_students, "#3498db"),
-            ("Total Teachers", total_teachers, "#2ecc71"),
-            ("Total Families", total_families, "#e74c3c"),
-            ("Pending Challans", pending_challans, "#9b59b6"),
-            ("Total Collected", f"Rs. {total_collected:,.0f}", "#f39c12"),
-            ("Outstanding", f"Rs. {total_outstanding:,.0f}", "#e67e22")
+            {
+                "title": "Total Students",
+                "value": str(total_students),
+                "icon": "STU",
+                "color": "#3498db",
+                "bg": "#ebf5fb"
+            },
+            {
+                "title": "Total Teachers",
+                "value": str(total_teachers),
+                "icon": "TCH",
+                "color": "#27ae60",
+                "bg": "#e8f8f5"
+            },
+            {
+                "title": "Total Families",
+                "value": str(total_families),
+                "icon": "FAM",
+                "color": "#e74c3c",
+                "bg": "#fdedec"
+            },
+            {
+                "title": "Pending Challans",
+                "value": str(pending_challans),
+                "icon": "PEN",
+                "color": "#9b59b6",
+                "bg": "#f4ecf7"
+            },
+            {
+                "title": "Total Collected",
+                "value": f"Rs. {total_collected:,.0f}",
+                "icon": "COL",
+                "color": "#27ae60",
+                "bg": "#e8f8f5"
+            },
+            {
+                "title": "Outstanding",
+                "value": f"Rs. {total_outstanding:,.0f}",
+                "icon": "OUT",
+                "color": "#e67e22",
+                "bg": "#fef5e7"
+            }
         ]
         
-        # Make 6 cards fit
-        for i in range(6):
-            self.stats_frame.grid_columnconfigure(i, weight=1)
+        # Container for stat cards
+        stats_container = ctk.CTkFrame(
+            self.main_content,
+            fg_color="transparent"
+        )
+        stats_container.pack(fill="x", padx=25, pady=15)
         
-        for i, (title, value, color) in enumerate(stats):
+        # Configure 6 equal columns
+        for i in range(6):
+            stats_container.grid_columnconfigure(i, weight=1)
+        
+        # Create each stat card
+        for i, stat in enumerate(stats):
             card = ctk.CTkFrame(
-                self.stats_frame,
-                width=180,
-                height=150,
+                stats_container,
                 fg_color="white",
-                corner_radius=15
+                corner_radius=15,
+                height=160
             )
-            card.grid(row=0, column=i, padx=10, pady=10, sticky="nsew")
+            card.grid(row=0, column=i, padx=5, pady=5, sticky="nsew")
+            card.grid_propagate(False)
+            
+            inner = ctk.CTkFrame(
+                card,
+                fg_color="transparent"
+            )
+            inner.pack(fill="both", expand=True, padx=15, pady=18)
+            
+            icon_box = ctk.CTkFrame(
+                inner,
+                width=44,
+                height=44,
+                corner_radius=12,
+                fg_color=stat["bg"]
+            )
+            icon_box.pack(anchor="w")
+            icon_box.pack_propagate(False)
+            
+            icon_label = ctk.CTkLabel(
+                icon_box,
+                text=stat["icon"],
+                font=("Arial", 12, "bold"),
+                text_color=stat["color"]
+            )
+            icon_label.pack(expand=True)
             
             value_label = ctk.CTkLabel(
-                card,
-                text=str(value),
-                font=("Arial", 24, "bold"),
-                text_color=color
+                inner,
+                text=stat["value"],
+                font=("Arial", 20, "bold"),
+                text_color=stat["color"]
             )
-            value_label.pack(pady=(30, 5))
+            value_label.pack(anchor="w", pady=(15, 2))
             
             title_label = ctk.CTkLabel(
-                card,
-                text=title,
-                font=("Arial", 14),
-                text_color="gray"
+                inner,
+                text=stat["title"],
+                font=("Arial", 12),
+                text_color="#7f8c8d"
             )
-            title_label.pack(pady=(0, 30))
+            title_label.pack(anchor="w")
+        
+        # ===== BOTTOM SPACER =====
+        bottom_spacer = ctk.CTkFrame(
+            self.main_content,
+            fg_color="transparent",
+            height=20
+        )
+        bottom_spacer.pack(fill="x")
     
     def show_students(self):
         """Show students view"""

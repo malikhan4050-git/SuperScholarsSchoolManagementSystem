@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from app.database.models import SessionLocal
 from app.utils.auth import Authentication
+from app.utils.window_manager import apply_fullscreen
 
 class LoginWindow(ctk.CTk):
     """Login Window Class"""
@@ -21,15 +22,13 @@ class LoginWindow(ctk.CTk):
         
         # Configure window
         self.title("Super Scholars School Management System")
-        self.geometry("1200x700")
-        self.resizable(False, False)
         
         # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         
-        # Center window
-        self.center_window()
+        # Apply fullscreen sizing
+        apply_fullscreen(self)
         
         # Initialize authentication
         self.db = SessionLocal()

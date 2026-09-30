@@ -14,6 +14,7 @@ from app.database.models import SessionLocal, User, UserRole, Guardian, Student
 from app.utils.auth import Authentication
 from app.services.fee_service import FeeService
 from app.ui.fee_challan_screen import FeeChallanlScreen
+from app.utils.window_manager import apply_fullscreen
 
 class SuperAdminDashboard(ctk.CTk):
     """Super Admin Dashboard Class"""
@@ -26,11 +27,13 @@ class SuperAdminDashboard(ctk.CTk):
         
         # Configure window
         self.title("Super Scholars - Super Admin Dashboard")
-        self.geometry("1400x800")
         
         # Set theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
+        
+        # Apply fullscreen sizing
+        apply_fullscreen(self)
         
         # Initialize database
         self.db = SessionLocal()
@@ -158,31 +161,49 @@ class SuperAdminDashboard(ctk.CTk):
         """Show dashboard view"""
         self.clear_main_content()
         
-        # Header
+        # ===== HEADER =====
         self.header_frame = ctk.CTkFrame(
             self.main_content,
-            height=100,
+            height=80,
             fg_color="white",
             corner_radius=0
         )
         self.header_frame.pack(fill="x")
+        self.header_frame.pack_propagate(False)
         
         self.header_title = ctk.CTkLabel(
             self.header_frame,
             text="Dashboard Overview",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 26, "bold"),
             text_color="#1e3a5f"
         )
-        self.header_title.pack(side="left", padx=30, pady=30)
+        self.header_title.pack(side="left", padx=30, pady=25)
         
-        # Stats cards
-        self.stats_frame = ctk.CTkFrame(
+        # ===== WELCOME SECTION =====
+        welcome_frame = ctk.CTkFrame(
             self.main_content,
-            fg_color="transparent"
+            fg_color="white",
+            corner_radius=15
         )
-        self.stats_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        welcome_frame.pack(fill="x", padx=25, pady=(15, 10))
         
-        # Get actual stats
+        welcome_title = ctk.CTkLabel(
+            welcome_frame,
+            text=f"Welcome back, {self.current_user.full_name}!",
+            font=("Arial", 20, "bold"),
+            text_color="#1e3a5f"
+        )
+        welcome_title.pack(anchor="w", padx=25, pady=(20, 5))
+        
+        welcome_subtitle = ctk.CTkLabel(
+            welcome_frame,
+            text="Here's an overview of your school's current status",
+            font=("Arial", 13),
+            text_color="#7f8c8d"
+        )
+        welcome_subtitle.pack(anchor="w", padx=25, pady=(0, 20))
+        
+        # ===== STATS SECTION =====
         total_users = self.db.query(User).count()
         total_admins = self.db.query(User).filter(User.role == UserRole.ADMIN).count()
         total_principals = self.db.query(User).filter(User.role == UserRole.PRINCIPAL).count()
@@ -190,38 +211,112 @@ class SuperAdminDashboard(ctk.CTk):
         total_families = self.db.query(Guardian).count()
         
         stats = [
-            ("Total Users", total_users, "#3498db"),
-            ("Admins", total_admins, "#2ecc71"),
-            ("Principals", total_principals, "#e74c3c"),
-            ("Students", total_students, "#f39c12"),
-            ("Families", total_families, "#9b59b6")
+            {
+                "title": "Total Users",
+                "value": str(total_users),
+                "icon": "USR",
+                "color": "#3498db",
+                "bg": "#ebf5fb"
+            },
+            {
+                "title": "Admins",
+                "value": str(total_admins),
+                "icon": "ADM",
+                "color": "#27ae60",
+                "bg": "#e8f8f5"
+            },
+            {
+                "title": "Principals",
+                "value": str(total_principals),
+                "icon": "PRN",
+                "color": "#e74c3c",
+                "bg": "#fdedec"
+            },
+            {
+                "title": "Students",
+                "value": str(total_students),
+                "icon": "STU",
+                "color": "#f39c12",
+                "bg": "#fef5e7"
+            },
+            {
+                "title": "Families",
+                "value": str(total_families),
+                "icon": "FAM",
+                "color": "#9b59b6",
+                "bg": "#f4ecf7"
+            }
         ]
         
-        for i, (title, value, color) in enumerate(stats):
+        # Container for stat cards
+        stats_container = ctk.CTkFrame(
+            self.main_content,
+            fg_color="transparent"
+        )
+        stats_container.pack(fill="x", padx=25, pady=15)
+        
+        # Configure 5 equal columns
+        for i in range(5):
+            stats_container.grid_columnconfigure(i, weight=1)
+        
+        # Create each stat card
+        for i, stat in enumerate(stats):
             card = ctk.CTkFrame(
-                self.stats_frame,
-                width=200,
-                height=150,
+                stats_container,
                 fg_color="white",
-                corner_radius=15
+                corner_radius=15,
+                height=160
             )
-            card.grid(row=0, column=i, padx=10, pady=10)
+            card.grid(row=0, column=i, padx=6, pady=5, sticky="nsew")
+            card.grid_propagate(False)
+            
+            inner = ctk.CTkFrame(
+                card,
+                fg_color="transparent"
+            )
+            inner.pack(fill="both", expand=True, padx=18, pady=18)
+            
+            icon_box = ctk.CTkFrame(
+                inner,
+                width=48,
+                height=48,
+                corner_radius=12,
+                fg_color=stat["bg"]
+            )
+            icon_box.pack(anchor="w")
+            icon_box.pack_propagate(False)
+            
+            icon_label = ctk.CTkLabel(
+                icon_box,
+                text=stat["icon"],
+                font=("Arial", 13, "bold"),
+                text_color=stat["color"]
+            )
+            icon_label.pack(expand=True)
             
             value_label = ctk.CTkLabel(
-                card,
-                text=str(value),
-                font=("Arial", 36, "bold"),
-                text_color=color
+                inner,
+                text=stat["value"],
+                font=("Arial", 26, "bold"),
+                text_color=stat["color"]
             )
-            value_label.pack(pady=(30, 5))
+            value_label.pack(anchor="w", pady=(15, 2))
             
             title_label = ctk.CTkLabel(
-                card,
-                text=title,
-                font=("Arial", 14),
-                text_color="gray"
+                inner,
+                text=stat["title"],
+                font=("Arial", 13),
+                text_color="#7f8c8d"
             )
-            title_label.pack(pady=(0, 30))
+            title_label.pack(anchor="w")
+        
+        # ===== BOTTOM SPACER =====
+        bottom_spacer = ctk.CTkFrame(
+            self.main_content,
+            fg_color="transparent",
+            height=20
+        )
+        bottom_spacer.pack(fill="x")
     
     def show_users(self):
         """Show user management view"""
